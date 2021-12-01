@@ -5,8 +5,8 @@ import pickle
 import numpy as np
 from SGD_MDS_sphere import SMDS, all_pairs_shortest_path,output_sphere
 from SGD_MDS import myMDS
+from MDS_classic import MDS
 from graph_functions import get_distance_matrix
-import networkx as nx
 
 
 def subdivide_graph(G,n):
@@ -28,35 +28,42 @@ def subdivide_graph(G,n):
                 break
     return G
 
-H = gt.load_graph('graphs/cube.xml')
+H = [gt.load_graph('graphs/cube.xml'),gt.load_graph('graphs/dodecahedron.xml'),gt.load_graph('graphs/isocahedron.xml')]
+count = 0
 
-scores = []
+scores = [[],[],[]]
+for graph in range(3):
+    for i in range(0,50,5):
+        G = subdivide_graph(H[graph].copy(),i)
+        print(i)
 
-for i in range(0,51,5):
-    G = subdivide_graph(H.copy(),i)
-    print(i)
+        d = get_distance_matrix(G,verbose=False)
 
-    d = get_distance_matrix(G,verbose=False)
+        spheres = []
+        for i in range(5):
+            Y = SMDS(d)
+            Y.solve(200)
+            spheres.append(Y.calc_distortion())
+        output_sphere(G,Y.X,fname="outputs/final_run_" + str(count) + ".dot")
 
-    spheres = []
-    for i in range(5):
-        Y = SMDS(d)
-        Y.solve(200)
-        spheres.append(Y.calc_distortion())
-    spheres = np.array(spheres).mean()
+        spheres_mean = np.array(spheres).mean()
 
-    euclid = []
-    for i in range(5):
-        Z = myMDS(d)
-        Z.solve()
-        euclid.append(Z.calc_distortion())
-    euclid = np.array(euclid).mean()
+        euclid = []
+        for i in range(5):
+            Z = MDS(d,geometry='spherical')
+            Z.solve(1000,debug=False)
+            euclid.append(Z.calc_distortion())
+        output_sphere(G,Z.X,fname="outputs/final_run_classic" + str(count) + ".dot")
+        euclid_mean = np.array(euclid).mean()
 
-    scores.append({'i': i,
-                   'sphere_score': spheres,
-                   'euclid_score': euclid})
+        count += 1
+        scores[graph].append({'i': i,
+                       'stochastic_score': spheres_mean,
+                       'classic_score': euclid_mean,
+                       'stochastic_data': spheres,
+                       'classic_data': euclid})
 
 
     #output_sphere(G,Y.X,'outputs/extend_cube' + str(i) + '.dot')
-with open('sphere_scores_final.pkl', 'wb') as myfile:
+with open('compare_classic.pkl', 'wb') as myfile:
     pickle.dump(scores, myfile)

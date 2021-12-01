@@ -3,10 +3,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import networkx as nx
 import numpy as np
-import igraph as ig
 import matplotlib.pyplot as plt
 #import tensorflow as tf
-import drawSvg as draw
 from math import sqrt
 
 
@@ -369,7 +367,5 @@ def main():
     Y = MDS(d,geometry='spherical')
     Y.solve(1000)
     print(Y.calc_stress())
-    output_hyperbolic(G,Y.X)
-    output_euclidean(G,Y.X)
     output_sphere(G,Y.X)
-main()
+#main()
