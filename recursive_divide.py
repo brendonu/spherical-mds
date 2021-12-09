@@ -8,6 +8,8 @@ from SGD_MDS import myMDS
 from MDS_classic import MDS
 from graph_functions import get_distance_matrix,subdivide_graph,subdivide_graph_recursive
 
+import time
+
 
 
 

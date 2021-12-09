@@ -4,7 +4,7 @@ import graph_tool.all as gt
 import matplotlib.pyplot as plt
 
 
-with open('sphere_scores_final.pkl', 'rb') as myfile:
+with open('compare_classic.pkl', 'rb') as myfile:
     final = pickle.load(myfile)
 
 
