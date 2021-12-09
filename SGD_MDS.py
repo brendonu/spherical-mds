@@ -71,8 +71,8 @@ class myMDS:
                 r = (mag-self.d[i][j])/2 #min distance to satisfy constraint
 
                 wc = self.w[i][j]*step
-                if wc > 1:
-                    wc = 1
+                if wc > 0.5:
+                    wc = 0.5
                 r = wc*r
 
                 term3 = (mag-self.d[i][j])/2

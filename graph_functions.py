@@ -34,3 +34,38 @@ def get_distance_matrix(g, verbose=True, weights=None):
         print('[distance_matrix] Done!')
 
     return X
+
+
+def subdivide_graph(G,n):
+    count = 0
+    while count < n:
+        E = list(G.edges())
+        index = [i for i in range(len(E))]
+        #random.shuffle(index)
+        for i in index:
+            U = G.add_vertex()
+            G.add_edge(E[i].source(),U)
+            G.add_edge(U,E[i].target())
+
+            G.remove_edge(E[i])
+
+            count += 1
+
+            if count > n:
+                break
+    return G
+
+def subdivide_graph_recursive(G,n):
+    count = 0
+    if n == 0:
+        return G
+    E = list(G.edges())
+    index = [i for i in range(len(E))]
+    for i in index:
+        U = G.add_vertex()
+        G.add_edge(E[i].source(),U)
+        G.add_edge(U,E[i].target())
+
+        G.remove_edge(E[i])
+
+    return subdivide_graph_recursive(G.copy(),n-1)
