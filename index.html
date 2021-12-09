@@ -288,7 +288,7 @@ function placeOnSphereNew(sphereCoord){
   sphereCoord = parse_pos_2(sphereCoord);
 
 
-  return [ sphereCoord[1]*(180.0/Math.PI),sphereCoord[0]*(180.0/Math.PI) ]
+  return [ sphereCoord[0]*(180.0/Math.PI),sphereCoord[1]*(180.0/Math.PI) ]
 }
 
 function vector3toLonLat( vector3 )
@@ -341,45 +341,64 @@ var width = 1000,
     y: 0
   };
 
-var myGraph = DotParser.parse(readTextFile('outputs/final_run_2.dot'));
-console.log(myGraph)
+var Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
+
+points = setGraph(Graph,null)
 nodes = {}
 nodePos = []
 edges = []
 
-Map = makeMap(myGraph);
+//Map = makeMap(myGraph);
 
-for (i in myGraph.children){
-  newObj = {};
-  if (myGraph.children[i].type === 'node_stmt'){
-    for(j in myGraph.children[i].attr_list){
-      newObj[myGraph.children[i].attr_list[j].id] = myGraph.children[i].attr_list[j].eq;
-    }
-    newObj['spherePos'] = placeOnSphereNew(newObj['pos']);
-    nodes[myGraph.children[i].node_id.id] = newObj;
-    nodePos.push({type:"Feature",
-      geometry: {
-        type: "Point",
-        coordinates: newObj['spherePos'],
-        label: newObj['label']
+function setGraph(myGraph,points) {
+  edges = []
+  nodes = {}
+  nodePos = []
+  for (i in myGraph.children){
+    newObj = {};
+    if (myGraph.children[i].type === 'node_stmt'){
+      for(j in myGraph.children[i].attr_list){
+        newObj[myGraph.children[i].attr_list[j].id] = myGraph.children[i].attr_list[j].eq;
       }
+      newObj['label'] =  myGraph.children[i].node_id.id;
+      newObj['spherePos'] = placeOnSphereNew(newObj['pos']);
+      nodes[myGraph.children[i].node_id.id] = newObj;
+      nodePos.push({type:"Feature",
+        geometry: {
+          type: "Point",
+          coordinates: newObj['spherePos'],
+          label: newObj['label']
+        }
+      }
+     )
     }
-   )
+    else if(myGraph.children[i].type === 'edge_stmt'){
+      source = myGraph.children[i].edge_list[0];
+      target = myGraph.children[i].edge_list[1];
+      myLink = {
+        type: "LineString",
+        coordinates: [nodes[source.id].spherePos,nodes[target.id].spherePos]
+      }
+      console.log(myGraph.children[i].edge_list[0])
+      edges.push([myLink]);
+      }
   }
-  else if(myGraph.children[i].type === 'edge_stmt'){
-    source = myGraph.children[i].edge_list[0];
-    target = myGraph.children[i].edge_list[1];
-    myLink = {
-      type: "LineString",
-      coordinates: [nodes[source.id].spherePos,nodes[target.id].spherePos]
+  if(!points){
+    points = {
+      type: "FeatureCollection",
+      features: nodePos
     }
-    edges.push(myLink);
+  }else{
+    console.log(nodePos)
+    console.log(i)
+    console.log(points.features)
+    for(let i = 0; i<points.features.length;i++){
+      points.features[i].geometry.coordinates = nodePos[i].geometry.coordinates
     }
+  }
+  return points
 }
-var points = {
-  type: "FeatureCollection",
-  features: nodePos
-}
+
 var polygons2 = {
   type: "FeatureCollection",
   'features': Map.polygonList
@@ -390,7 +409,6 @@ var polygons2 = {
 
 var svg = d3.select("svg");
 
-var v = d3.geoVoronoi()(points);
 var projection = d3.geoOrthographic(),
     path = d3.geoPath().projection(projection);
 
@@ -416,59 +434,59 @@ svg.append('path')
     .attr('d', path);
 
 let lines = d3.geoGraticule().step([10, 10]);
+let t = d3.transition().duration(750)
+
+function updateData(points){
 
 
-
-svg.append('g')
-    .attr('class', 'polygons')
-    .selectAll('path')
-    .data(polygons2.features)
-    .enter()
-    .append('path')
-    .attr('d', path)
-    .attr('fill', function(_,i) { return d3.schemeCategory10[i%10]; });
-
-svg.append('g')
-    .attr('class', 'graticule')
-    .selectAll('path')
-    .data([lines()])
-    .enter()
-    .append('path')
-    .attr('d', path)
+  svg.append('g')
+      .attr('class', 'graticule')
+      .selectAll('path')
+      .data([lines()])
+      .enter()
+      .append('path')
+      .attr('d', path)
 
 
-let mylinks = svg.append('g')
-    .attr('class', 'links')
-    .selectAll('path')
-    .data(edges)
-    .enter()
-    .append('path')
-    .attr('d', path);
+  let mylinks = svg.append('g')
+      .attr('class', 'links')
+      .selectAll('path')
+      .data(edges)
+      .enter()
+      .append('path')
+      .attr('d', path);
 
 
-svg.append('g')
-    .attr('class', 'sites')
-    .selectAll('path')
-    .data(points.features)
-    .enter()
-    .append('path')
-    .attr('d', path);
+  svg.append('g')
+      .attr('class', 'sites')
+      .selectAll('path')
+      .data(points.features)
+      .join(
+        enter => enter.append('path')
+        .attr('d', path),
+
+        update => update.transition(t)
+          .attr('d',path)
+      );
 
 
-let labels = svg.append('g').attr('class', 'labels');
+  let labels = svg.append('g').attr('class', 'labels');
 
-svg.append('g')
-    .attr('class', 'labels')
-    .selectAll('path')
-    .data(points.features)
-    .enter()
-    .append('text')
-    .attr('d',labels)
-    .style('text-anchor', 'middle')
-    .attr('transform', function(d) {
-         return 'translate(' +  path.centroid(d) + ')';
-       })
-       .text(function(d) {return d.geometry.label; });
+  svg.append('g')
+      .attr('class', 'labels')
+      .selectAll('path')
+      .data(points.features)
+      .enter()
+      .append('text')
+      .text(d => d.label)
+      //.attr('d',d => d.label)
+      .attr('font-size', 14)
+      .style('text-anchor', 'middle')
+      .attr('transform', function(d) {
+           return 'translate(' +  path.centroid(d) + ')';
+         })
+         .text(function(d) {return d.geometry.label; });
+  }
 
 
   function zoomed() {
@@ -536,6 +554,26 @@ function changeProjection(){
   updatePaths(svg);
 }
 
+let iteration = 0
+
+function changeData(){
+  // svg.selectAll('*').remove()
+  // svg.append('path')
+  //     .attr('id', 'sphere')
+  //     .datum({ type: "Sphere" })
+  //     .attr('d', path);
+  Graph = DotParser.parse(readTextFile('new_outputs/cube_animation' + iteration.toString() + '.dot'));
+  setGraph(Graph,points)
+  updateData(points)
+  updatePaths(svg)
+
+  iteration += 1
+  if(iteration <= 100){
+    setTimeout(changeData,5000)
+  }
+}
+
+setTimeout(changeData,1000)
 
 // gentle animation
 /*d3.interval(function(elapsed) {

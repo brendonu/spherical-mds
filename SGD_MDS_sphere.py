@@ -19,6 +19,7 @@ import os
 class SMDS:
     def __init__(self,dissimilarities,init_pos=np.array([])):
         self.d = scale_matrix(dissimilarities,math.pi)
+        #self.d = dissimilarities
         self.d_max = np.max(dissimilarities)
         #self.d = (math.pi/self.d_max) * dissimilarities
         self.d_min = 1
@@ -41,10 +42,13 @@ class SMDS:
         epsilon = 0.1
         self.eta_min = epsilon/self.w_max
 
+        self.history = []
+        self.pos_history = []
 
 
 
-    def solve(self,num_iter=15,epsilon=1e-3,debug=False):
+
+    def solve(self,num_iter=15,epsilon=1e-3,debug=False,schedule='fixed'):
         current_error,delta_e,step,count = 1000,1,self.eta_max,0
         #indices = [i for i in range(len(self.d))]
         indices = list(itertools.combinations(range(self.n), 2))
@@ -53,7 +57,7 @@ class SMDS:
 
         weight = 1/choose(self.n,2)
 
-        while count < num_iter:
+        while count < 100:
             for k in range(len(indices)):
                 i = indices[k][0]
                 j = indices[k][1]
@@ -62,8 +66,8 @@ class SMDS:
 
 
                 wc = self.w[i][j]*step
-                if wc > 1:
-                    wc = 1
+                cap = 0.5
+                wc = cap if wc > cap else wc
 
                 r = 2*(geodesic(self.X[i],self.X[j]) - self.d[i][j])
                 r = r*gradient(self.X[i],self.X[j]) #/geodesic(self.X[i],self.X[j])
@@ -75,16 +79,29 @@ class SMDS:
                 self.X[i] = self.X[i] - m[0]
                 self.X[j] = self.X[j] - m[1]
 
-            #step = self.compute_step_size_sqrt(count,num_iter)
-            step = 0.01
+            step = self.get_step(count,num_iter,schedule)
+
 
 
             count += 1
             random.shuffle(indices)
             if debug:
-                print(self.calc_stress())
-
+                self.history.append(self.calc_stress())
+                print(self.history[-1])
+                self.pos_history.append(self.X.copy())
+        if debug:
+            self.history = np.array(self.history)
         return self.X
+
+    def get_step(self,count,num_iter,schedule):
+        if schedule == 'fixed':
+            return 0.01
+        elif schedule == 'exp':
+            return self.compute_step_size(count,num_iter)
+        elif schedule == 'frac':
+            return self.compute_step_size_frac(count,num_iter)
+        elif schedule == 'sqrt':
+            return self.compute_step_size_sqrt(count,num_iter)
 
     def calc_stress(self):
         stress = 0
@@ -111,12 +128,15 @@ class SMDS:
         return dy_dx
 
     def compute_step_size(self,count,num_iter):
-        a = 1/self.w_max
-        b = -math.log(self.eta_min/self.eta_max)/(num_iter-1)
-        return a/pow(1+b*count,0.5)
+
 
         lamb = math.log(self.eta_min/self.eta_max)/(num_iter-1)
         return self.eta_max*math.exp(lamb*count)
+
+    def compute_step_size_frac(self,count,num_iter):
+        a = 1/self.w_max
+        b = -math.log(self.eta_min/self.eta_max)/(num_iter-1)
+        return a/pow(1+b*count,1)
 
     def compute_step_size_sqrt(self,count,num_iter):
         a = 1/self.w_max
@@ -261,7 +281,7 @@ def output_sphere(G,X,fname="output_sphere.dot"):
 
     count = 0
     for x in G.nodes():
-        G.nodes[x]['pos'] = str(X[count][1]) + "," + str(X[count][0])
+        G.nodes[x]['pos'] = str(X[count][0]) + "," + str(X[count][1])
         dim3 = latLongToCart(X[count])
         G.nodes[x]['dim3pos'] = str(dim3[0]) + "," + str(dim3[1]) + "," + str(dim3[2])
         lng = X[1]*(180.0/math.pi)-180
