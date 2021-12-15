@@ -1,3 +1,9 @@
+#Jacob Stuff
+outputs/
+new_outputs/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

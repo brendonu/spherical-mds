@@ -37,13 +37,13 @@ class MDS:
             self.w[i][i] = 0
 
         w_min = 1/pow(self.d_max,2)
-        w_max = 1/pow(self.d_min,2)
+        self.w_max = 1/pow(self.d_min,2)
         self.eta_max = 1/w_min
         epsilon = 0.1
-        self.eta_min = epsilon/w_max
+        self.eta_min = epsilon/self.w_max
 
     def solve(self,num_iter=100,epsilon=1e-3,debug=True):
-        current_error,error,step,count = 1000,1,0.01,0
+        current_error,error,step,count = 1000,1,1,0
         prev_error = 1000000
 
         indices = [i for i in range(self.n)]
@@ -61,14 +61,15 @@ class MDS:
                         #loss[i] = normalize(loss[i])
             #print(loss)
             step = self.compute_step_size(count,num_iter)
-            if step > 1:
-                step = 1
-            step = 0.01
+            step = step if step < 0.01 else 0.01
+            #step = 0.01
             X = X - step*loss
             self.X = X
             stress = self.calc_stress()
-
+            if abs((stress-prev_error)/prev_error) < epsilon and count > 100:
+                break
             prev_error = stress
+
             if debug:
                 print(stress)
 
@@ -121,8 +122,11 @@ class MDS:
         return (1/choose(self.n,2))*distortion
 
     def compute_step_size(self,count,num_iter):
-        lamb = math.log(self.eta_min/self.eta_max)/(num_iter-1)
-        return self.eta_max*math.exp(lamb*count)
+        # lamb = math.log(self.eta_min/self.eta_max)/(num_iter-1)
+        # return self.eta_max*math.exp(lamb*count)
+        a = 1/self.w_max
+        b = -math.log(self.eta_min/self.eta_max)/(num_iter-1)
+        return a/(pow(1+b*count,0.5))
 
 
     def init_point(self):
@@ -148,6 +152,8 @@ def hyper_grad(p,q):
     sinh = np.sinh
     cosh = np.cosh
     bottom = 1/pow(pow(part_of_dist_hyper(p,q),2)-1,0.5)
+    if np.isinf(bottom):
+        bottom = 1000
 
     #delta_a = -(cos(b-t)*sinh(r)*cosh(a)-sinh(a)*cosh(r))*bottom
     #delta_b = (sin(b-t)*sinh(a)*sinh(r))*bottom
@@ -169,6 +175,8 @@ def sphere_grad(p,q):
     lamb1,phi1 = p
     lamb2,phi2 = q
     bottom = 1/pow(1-pow(part_of_dist_sphere(p,q),2),0.5)
+    if np.isinf(bottom):
+        bottom = 1000
     sin = np.sin
     cos = np.cos
     x = -sin(lamb2-lamb1)*cos(phi2)*cos(phi1)*bottom

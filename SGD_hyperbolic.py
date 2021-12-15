@@ -1,20 +1,10 @@
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import networkx as nx
 import numpy as np
-import igraph as ig
 import matplotlib.pyplot as plt
 #import tensorflow as tf
-import drawSvg as draw
 from math import sqrt
+import itertools
 from SGD_MDS import myMDS
-
-
-from drawSvg import Drawing
-from hyperbolic import euclid, util
-from hyperbolic.poincare.shapes import *
-from hyperbolic.poincare import Transform
 
 
 import math
@@ -23,14 +13,18 @@ import cmath
 import copy
 import time
 import os
-import itertools
+#from SGD_MDS import MDS
 
 class HMDS:
     def __init__(self,dissimilarities,epsilon=0.1,init_pos=np.array([])):
         self.d = dissimilarities
-        self.d_max = np.max(self.d)
+        self.d_max = np.max(dissimilarities)
+        # print(self.d_max)
+        #self.d = self.d*(2*math.pi/self.d_max)
         self.d_min = 1
         self.n = len(self.d)
+        if self.n > 30:
+            self.d = self.d*(10/self.d_max)
         if init_pos.any(): #If an initial configuration is desired, assign it
             self.X = np.asarray(init_pos)
             if self.X.shape[0] != self.n:
@@ -42,83 +36,101 @@ class HMDS:
             self.X = np.asarray(self.X,dtype="float64")
 
         #Weight is inversely proportional to the square of the theoretic distance
-        self.w = [[ 1/pow(self.d[i][j],2) if self.d[i][j] > 0 else 0 for i in range(self.n)]
+        self.w = [[1/pow(self.d[i][j],3.14) if self.d[i][j] > 0 else 0 for i in range(self.n)]
                     for j in range(self.n)]
 
         #Values for step size calculation
         w_min = 1/pow(self.d_max,2)
         self.w_max = 1/pow(self.d_min,2)
-        #epsilon = 0.1
 
-        self.eta_max = 1/pow(w_min,0.5)
+        self.eta_max = 1/w_min
         self.eta_min = epsilon/self.w_max
 
 
 
 
-    def solve(self,num_iter=1000,epsilon=1e-3,debug=False,schedule="default"):
+    def solve(self,num_iter=15,epsilon=1e-3,debug=False,slideshow=False):
         step,count  = self.eta_max, 0
-        step = 1
 
         #Array of indices to shuffle and choose pairs of nodes
-        #indices = [i for i in range(self.n)]
         indices = list(itertools.combinations(range(self.n), 2))
         random.shuffle(indices)
+        weight = 1/choose(self.n,2)
 
-        weight = 0
+        double_count = 0
+        loss = []
 
-        grads = np.zeros(self.X.shape)
-        X = np.zeros(self.X.shape)+self.X
-        deltaX = 100
-        max_change = 1
-        uncapped = False
-
-        while count < num_iter+1:# and max_change > 0.003:
-            max_change = -100
+        while count < num_iter:
             for k in range(len(indices)):
                 i = indices[k][0]
                 j = indices[k][1]
                 if i > j:
                     i,j = j,i
 
-                dist = polar_dist(X[i],X[j])
-                dloss = grad(X[i],X[j])*((dist-self.d[i][j])/2)
-                wc = step*self.w[i][j]
-                if wc > 0.01:
-                    wc = 0.01
-                    uncapped = False
-                else:
-                    uncapped = True
+                pq = self.X[i] - self.X[j] #Vector between points
+                #pq = grad(self.X[i],self.X[j])
+                #print(grad(self.X[i],self.X[j]))
+                mag = geodesic(self.X[i],self.X[j])
+
+                r = (mag-self.d[i][j])/2 #min distance each node needs to move to satisfy d[i][j]
+
+                wc = self.w[i][j]*step #Weighted step size. If > 1, set it to 1
+                if wc > 1:
+                    wc = 1
+                r = wc*r
+
+                m = pq*r / mag
+
+                self.X[i] = self.X[i] - m
+                self.X[j] = self.X[j] + m
+
+                #mag = geodesic(self.X[i],self.X[j])
+                                #print(dist_grad)
+                if False:
+                    #print(dist_grad)
+                    dist_grad = (self.X[i]-self.X[j])
+
+                    #print(dist_grad)
 
 
-                m = dloss
-                X[i] = X[i] - wc*m[0]
-                X[j] = X[j] - wc*m[1]
+                    r = (mag-self.d[i][j])/2
+
+                    wc = self.w[i][j]*step
+                    if wc > 1:
+                        wc = 1
+                    r = wc*r
+
+                    m = dist_grad*r/mag
+
+
+                    self.X[i] = self.X[i] - m
+                    self.X[j] = self.X[j] + m
+                elif False:
+                    dist_grad = grad_old(self.X[i],self.X[j])
+                    T = weight*2*self.w[i][j]*dist_grad*(mag-self.d[i][j])
+                    self.X[i] = self.X[i] - step*T[0]
+                    self.X[j] = self.X[j] - step*T[1]
 
                 if count % 10 == 0:
-                    #Draw_SVG(G,X,weight)
-                    weight += 1
-
-                new_dist = polar_dist(X[i],X[j])
-                deltaX = abs(dist-new_dist)
-                max_change = max(max_change,deltaX)
+                    #Draw_SVG(self.X,double_count)
+                    double_count += 1
 
 
-            #step = self.compute_step_size_old(count,num_iter)
-
-            step = self.compute_step_size(count,num_iter,uncapped)
-
+            step = self.compute_step_size_old(count,num_iter)
 
             count += 1
-            #step = 1/count
+            #output_hyperbolic(self.X,G,count)
             random.shuffle(indices)
             if debug:
-                self.X = X
-                print(self.calc_stress())
-                #print(step)
+                stress = self.calc_stress()
+                print(stress)
+                loss.append(stress)
+            if slideshow:
+                Draw_SVG(self.X,count)
 
-        self.X = X
 
+        if debug:
+            return loss
         return self.X
 
     def calc_stress(self):
@@ -131,7 +143,7 @@ class HMDS:
         for i in range(self.n):
             for j in range(i):
                 stress += self.w[i][j]*pow(geodesic(self.X[i],self.X[j])-self.d[i][j],2)
-        return stress
+        return stress/2
 
     def calc_distortion(self):
         """
@@ -148,29 +160,43 @@ class HMDS:
         lamb = math.log(self.eta_min/self.eta_max)/(num_iter-1)
         return self.eta_max*math.exp(lamb*count)
 
-    def compute_step_size(self,count,num_iter,uncapped):
-        lamb = math.log(self.eta_min/self.eta_max)/30
-        if True:
-            #return self.eta_max*math.exp(lamb*count)
-            return self.w_max/pow(1+5*count,1)
-        else:
-            return self.compute_step_size_old(count,num_iter)
-
+    def compute_step_size(self,count,num_iter):
+        a = 1/self.w_max
+        b = -math.log(self.eta_min/self.eta_max)/(num_iter-1)
+        return a/(pow(1+b*count,0.5))
 
     def init_point(self):
             r = pow(random.uniform(0,1),0.5)
             theta = random.uniform(0,2*math.pi)
             x = math.atanh(math.tanh(r)*math.cos(theta))
             y = math.asinh(math.sinh(r)*math.sin(theta))
-            return [r,theta]
+            return [x,y]
+
+
+def normalize(v):
+    mag = pow(sum([val*val for val in v]), 0.5)
+    return np.array([val/mag for val in v])
+
+def mobius(z,a,b,c,d):
+    return a*z+b/c*z+d
+
+def geodesic(xi,xj):
+    return lob_dist(xi,xj)
+
+def choose(n,k):
+    product = 1
+    for i in range(1,k+1):
+        product *= (n-(k-1))/i
+    return product
+
 
 def grad(p,q):
     r,t = p
     a,b = q
     sin = np.sin
     cos = np.cos
-    sinh = np.sinh
-    cosh = np.cosh
+    sinh = math.sinh
+    cosh = math.cosh
     bottom = 1/pow(pow(part_of_dist(p,q),2)-1,0.5)
 
     delta_a = -(cos(b-t)*sinh(r)*cosh(a)-sinh(a)*cosh(r))*bottom
@@ -179,7 +205,7 @@ def grad(p,q):
     delta_r = -1*(cos(b-t)*sinh(a)*cosh(r)-sinh(r)*cosh(a))*bottom
     delta_t = -1*(sin(b-t)*sinh(a)*sinh(r))*bottom
 
-    return np.array([[delta_r,-delta_t],[delta_a,-delta_b]])
+    return np.array([[delta_r,delta_t],[delta_a,delta_b]])
 
 def part_of_dist(xi,xj):
     r,t = xi
@@ -189,24 +215,43 @@ def part_of_dist(xi,xj):
     #print(np.cosh(y1)*np.cosh(x2-x1)*np.cosh(y2)-np.sinh(y1)*np.sinh(y2))
     return np.cos(b-t)*sinh(a)*sinh(r)-cosh(a)*cosh(r)
 
+def grad_old(p,q):
+    x,y = p
+    a,b = q
+    sinh = math.sinh
+    cosh = math.cosh
+    bottom = 1/pow(pow(part_of_dist_old(p,q),2)-1,0.5)
 
-def normalize(v):
-    mag = pow(v[0]*v[0]+v[1]*v[1],0.5)
-    return v/mag
+    delta_a = sinh(a-x)*cosh(b)*cosh(y)*bottom
+    delta_b = -1*(-sinh(b)*cosh(y)*cosh(a-x)+sinh(y)*cosh(b))*bottom
+
+    delta_x = -1*sinh(a-x)*cosh(b)*cosh(y)*bottom
+    delta_y = (-sinh(b)*cosh(y) + sinh(y)*cosh(b)*cosh(a-x))*bottom
+
+    return np.array([[delta_x,delta_y],[delta_a,delta_b]])
+
+def part_of_dist_old(xi,xj):
+    x,y = xi
+    a,b = xj
+    #print(np.cosh(y1)*np.cosh(x2-x1)*np.cosh(y2)-np.sinh(y1)*np.sinh(y2))
+    return np.sinh(b)*np.sinh(y)-np.cosh(b)*np.cosh(y)*np.cosh(a-x)
+
 
 def polar_dist(x1,x2):
     r1,theta1 = x1
     r2,theta2 = x2
     return np.arccosh(np.cosh(r1)*np.cosh(r2)-np.sinh(r1)*np.sinh(r2)*np.cos(theta2-theta1))
 
-def geodesic(xi,xj):
-    return polar_dist(xi,xj)
 
-def choose(n,k):
-    product = 1
-    for i in range(1,k+1):
-        product *= (n-(k-1))/i
-    return product
+
+def lob_dist(xi,xj):
+    x1,y1 = xi
+    x2,y2 = xj
+    dist = np.arccosh(np.cosh(y1)*np.cosh(x2-x1)*np.cosh(y2)-np.sinh(y1)*np.sinh(y2))
+    if np.isnan(dist):
+        return 200
+    return dist
+
 
 def bfs(G,start):
     queue = [start]
@@ -259,21 +304,17 @@ def euclid_dist(x1,x2):
     return pow(x*x+y*y,0.5)
 
 
-def output_euclidean(G,X):
+def output_euclidean(X):
     pos = {}
     count = 0
-    for i in G.nodes():
-        r,t = X[count]
-        Re = (math.exp(r)-1)/(math.exp(r)+1)
-        x = Re*np.cos(t)
-        y = Re*np.sin(t)
-        pos[i] = [x,y]
+    for x in G.nodes():
+        pos[x] = X[count]
         count += 1
     nx.draw(G,pos=pos,with_labels=True)
     plt.show()
     plt.clf()
 
-def Draw_SVG(G,X,number):
+def Draw_SVG(X,number):
     points = []
     lines = []
     nodeDict = {}
@@ -282,10 +323,13 @@ def Draw_SVG(G,X,number):
 
     count = 0
     for i in G.nodes():
-        r,t = X[count]
-        Re = (math.exp(r)-1)/(math.exp(r)+1)
-        x = Re*np.cos(t)
-        y = Re*np.sin(t)
+        x,y= X[count]
+        Rh = np.arccosh(np.cosh(x)*np.cosh(y))
+        theta = 2*math.atan2(np.sinh(x)*np.cosh(y)+pow(pow(np.cosh(x),2)*pow(np.cosh(y),2)-1,0.5),np.sinh(y))
+        Re = (math.exp(Rh)-1)/(math.exp(Rh)+1)
+        #Re = (math.exp(r)-1)/(math.exp(r)+1)
+        x = Re*np.cos(theta)
+        y = Re*np.sin(theta)
         G.nodes[i]['pos'] = [x,y]
         count += 1
 
@@ -308,18 +352,17 @@ def Draw_SVG(G,X,number):
 
 
     d.setRenderSize(w=1000)
-    d.saveSvg('slideshow/Test' + str(number) + '.svg')
+    d.saveSvg('SGD/slideshow/Test' + str(number) + '.svg')
 
-def output_hyperbolic(X,G):
+def output_hyperbolic(X,G,count1):
     count = 0
     for i in G.nodes():
-        #print(X)
         x,y = X[count]
-        Rh = float(x)
-        theta = float(y)
-        #Rh = np.arccosh(np.cosh(x)*np.cosh(y))
-        #theta = 2*math.atan2(np.sinh(x)*np.cosh(y)+pow(pow(np.cosh(x),2)*pow(np.cosh(y),2)-1,0.5),np.sinh(y))
-        #Re = (math.exp(Rh)-1)/(math.exp(Rh)+1)
+        Rh = x
+        theta = y
+        Rh = np.arccosh(np.cosh(x)*np.cosh(y))
+        theta = 2*math.atan2(np.sinh(x)*np.cosh(y)+pow(pow(np.cosh(x),2)*pow(np.cosh(y),2)-1,0.5),np.sinh(y))
+        Re = (math.exp(Rh)-1)/(math.exp(Rh)+1)
         #hR = math.acosh((r*r/2)+1)
         Rl = pow(2*(math.cosh(Rh)-1),0.5)
 
@@ -331,49 +374,30 @@ def output_hyperbolic(X,G):
     nx.drawing.nx_agraph.write_dot(G, "/home/jacob/Desktop/hyperbolic-space-graphs/old/jsCanvas/graphs/hyperbolic_colors.dot")
     nx.drawing.nx_agraph.write_dot(G, "/home/jacob/Desktop/hyperbolic-space-graphs/maps/static/graphs/hyperbolic_colors.dot")
 
-
 #Program start
 def main():
     #G = nx.drawing.nx_agraph.read_dot('input.dot')
     #G = nx.triangular_lattice_graph(5,5)
-    G = nx.random_tree(90)
-    #G = nx.full_rary_tree(2,30)
-    d = np.asarray(all_pairs_shortest_path(G))/1
-    d = d*1
+    #G = nx.random_tree(50)
+
+    d = np.asarray(all_pairs_shortest_path(G))
+
+    Y = myMDS(d)
+    Y.solve(15)
+    print(Y.calc_distortion())
+    output_euclidean(Y.X)
+
 
     best_X = []
-    best_score = 1000000
-    Z = myMDS(d)
-    Z.solve(15)
-    init = np.ones(Z.X.shape)
-    for i in range(len(Z.X)):
-        r = pow(pow(Z.X[i][0],2)+pow(Z.X[i][1],2),0.5)
-        theta = math.atan2(Z.X[i][1],Z.X[i][0])
-        init[i] = np.array([r,theta])
-    #print(Z.X)
-    #print(Z.calc_stress())
-    #output_euclidean(G,Z.X)
-    for i in range(1):
-        Y = HMDS(d,epsilon=0.15,init_pos=init)
-        Draw_SVG(G,Y.X,0)
-        Y.solve(100,debug=True)
-        print(Y.calc_stress())
+    best_score = 10000000
+
+    for i in range(10):
+        Y = myHMDS(d,init_pos=Y.X)
+        Y.solve(50)
         if Y.calc_stress() < best_score:
-            best_score = Y.calc_stress()
-            print(Y.calc_distortion())
+            best_score = Y.calc_distortion()
             best_X = Y.X
             print('got better')
-        #print(i)
-    output_hyperbolic(best_X,G)
-    #print(best_score)
-    output_euclidean(G,best_X)
-    Draw_SVG(G,Y.X,1)
-main()
-
-#G = nx.grid_graph([5,5])
-#G = nx.full_rary_tree(2,30)
-#d = np.asarray(all_pairs_shortest_path(G))/1
-
-#Y = HMDS(d)
-#Y.solve(100,debug=True)
-#Draw_SVG(G,Y.X,1)
+        print(i)
+    output_hyperbolic(best_X,G,0)
+    print(best_score)
