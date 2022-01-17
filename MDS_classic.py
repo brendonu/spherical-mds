@@ -31,7 +31,7 @@ class MDS:
                 self.X[i] = self.init_point()
             self.X = np.asarray(self.X)
 
-        self.w = [[ 1/pow(self.d[i][j],0.5) if i != j else 0 for i in range(self.n)]
+        self.w = [[ 1/pow(self.d[i][j],2) if i != j else 0 for i in range(self.n)]
                     for j in range(self.n)]
         for i in range(len(self.d)):
             self.w[i][i] = 0
@@ -61,17 +61,19 @@ class MDS:
                         #loss[i] = normalize(loss[i])
             #print(loss)
             step = self.compute_step_size(count,num_iter)
-            step = step if step < 0.01 else 0.01
-            #step = 0.01
+            step = step if step < 0.1 else 0.1
+            # step = 0.1
             X = X - step*loss
             self.X = X
             stress = self.calc_stress()
             if abs((stress-prev_error)/prev_error) < epsilon and count > 100:
-                break
+                pass
             prev_error = stress
 
             if debug:
+                print(count)
                 print(stress)
+                print()
 
             count += 1
         self.X = X
@@ -124,8 +126,8 @@ class MDS:
     def compute_step_size(self,count,num_iter):
         # lamb = math.log(self.eta_min/self.eta_max)/(num_iter-1)
         # return self.eta_max*math.exp(lamb*count)
-        a = 1/self.w_max
-        b = -math.log(self.eta_min/self.eta_max)/(num_iter-1)
+        a = 1
+        b = 1#-math.log(self.eta_min/self.eta_max)/(num_iter-1)
         return a/(pow(1+b*count,0.5))
 
 

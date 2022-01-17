@@ -8,7 +8,7 @@ from SGD_MDS import myMDS
 from SGD_hyperbolic import HMDS
 from MDS_classic import MDS
 from graph_functions import get_distance_matrix,subdivide_graph,subdivide_graph_recursive
-
+from graph_io import load_graph
 import time
 
 
@@ -122,71 +122,79 @@ def compare_sphere_to_euclid():
 
 
 def compare_hyperbolic():
-    H = [gt.load_graph('graphs/cube.xml'),gt.load_graph('graphs/dodecahedron.xml'),gt.load_graph('graphs/isocahedron.xml')]
+    def prob(a, b):
+       if a == b:
+           return 0.999
+       else:
+           return 0.001
+
+    G, bm = gt.random_graph(400, lambda: np.random.poisson(lam=7), directed=False,
+
+                            model="blockmodel",
+
+                            block_membership=lambda: random.randint(0,1),
+
+                            edge_probs=prob)
+
+    H = [gt.load_graph('graphs/cube.xml'),G,load_graph('graphs/dwt_419.vna')]
     count = 0
 
     scores = [[],[],[]]
-    for graph in range(1):
-        for i in range(0,50,5):
-            H = nx.random_tree(i+10)
-            G = gt.Graph(directed=False)
-            G.add_vertex(n=len(H.nodes()))
-            for e in H.edges():
-                G.add_edge(e[0],e[1])
-            print(i)
-            print(G.num_vertices())
+    for graph in range(len(H)):
+        G = H[graph]
+        print(G.num_vertices())
 
-            d = get_distance_matrix(G,verbose=False)
+        d = get_distance_matrix(G,verbose=False)
 
-            stochastics_stress = []
-            stochastics_dist = []
-            stochastics_time = []
-            for i in range(30):
-                Y = HMDS(d)
-                start = time.time()
-                Y.solve(30)
-                stochastics_time.append(time.time()-start)
-                stochastics_stress.append(Y.calc_stress())
-                stochastics_dist.append(Y.calc_distortion())
+        stochastics_stress = []
+        stochastics_dist = []
+        stochastics_time = []
+        for i in range(30):
+            Y = HMDS(d)
+            start = time.time()
+            Y.solve(30)
+            stochastics_time.append(time.time()-start)
+            stochastics_stress.append(Y.calc_stress())
+            stochastics_dist.append(Y.calc_distortion())
 
-            stochastics_stress_mean = np.array(stochastics_stress).mean()
-            stochastics_dist_mean = np.array(stochastics_dist).mean()
-            print("Mean for stochastic: " ,stochastics_dist_mean)
+        stochastics_stress_mean = np.array(stochastics_stress).mean()
+        stochastics_dist_mean = np.array(stochastics_dist).mean()
+        print("Mean for stochastic: " ,stochastics_dist_mean)
 
 
-            standard_stress = []
-            standard_dist = []
-            standard_time = []
-            for i in range(30):
-                Z = MDS(d,geometry='hyperbolic')
-                start = time.time()
-                Z.solve(100,debug=False)
-                standard_time.append(time.time()-start)
-                standard_stress.append(Z.calc_stress())
-                standard_dist.append(Z.calc_distortion())
-            standard_stress_mean = np.array(standard_stress).mean()
-            standard_dist_mean = np.array(standard_dist).mean()
-            print("Mean for standard: " ,standard_dist_mean)
-            print()
+        standard_stress = []
+        standard_dist = []
+        standard_time = []
+        for i in range(30):
+            Z = MDS(d,geometry='hyperbolic')
+            start = time.time()
+            Z.solve(100,debug=False)
+            standard_time.append(time.time()-start)
+            standard_stress.append(Z.calc_stress())
+            standard_dist.append(Z.calc_distortion())
+        standard_stress_mean = np.array(standard_stress).mean()
+        standard_dist_mean = np.array(standard_dist).mean()
+        print("Mean for standard: " ,standard_dist_mean)
+        print()
 
-            count += 1
-            scores[graph].append({'i': i,
-                           'stochastic_stress': stochastics_stress_mean,
-                           'standard_stress': standard_stress_mean,
-                           'stochastic_dist': stochastics_dist_mean,
-                           'standard_dist': standard_dist_mean,
-                           'stochastic_stress_data': stochastics_stress,
-                           'stochastic_dist_data': stochastics_dist,
-                           'standard_stress_data': standard_stress,
-                           'standard_dist_data': standard_dist,
-                           'stochastic_time': stochastics_time,
-                           'standard_time': standard_time,
-                           'stochastic_out': Y.X,
-                           'standard_out': Z.X})
+        count += 1
+        scores[graph].append({'i': i,
+                       'stochastic_stress': stochastics_stress_mean,
+                       'standard_stress': standard_stress_mean,
+                       'stochastic_dist': stochastics_dist_mean,
+                       'standard_dist': standard_dist_mean,
+                       'stochastic_stress_data': stochastics_stress,
+                       'stochastic_dist_data': stochastics_dist,
+                       'standard_stress_data': standard_stress,
+                       'standard_dist_data': standard_dist,
+                       'stochastic_time': stochastics_time,
+                       'standard_time': standard_time,
+                       'stochastic_out': Y.X,
+                       'standard_out': Z.X})
 
 
         #output_sphere(G,Y.X,'outputs/extend_cube' + str(i) + '.dot')
-    with open('data/compare_hyperbolic_standard_stochastic.pkl', 'wb') as myfile:
+    with open('data/compare_hyperbolic_test.pkl', 'wb') as myfile:
         pickle.dump(scores, myfile)
 
 
