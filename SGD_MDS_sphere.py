@@ -16,6 +16,35 @@ import copy
 import time
 import os
 
+def schedule_convergent(d,t_max,eps,t_maxmax):
+    w = np.divide(np.ones(d.shape),d**2,out=np.zeros_like(d), where=d!=0)
+    w_min,w_max = np.amin(w,initial=10000,where=w > 0), np.max(w)
+
+    eta_max = 1.0 / w_min
+    eta_min = eps / w_max
+
+    lamb = np.log(eta_max/eta_min) / (t_max-1)
+
+    # initialize step sizes
+    etas = np.zeros(t_maxmax)
+    eta_switch = 1.0 / w_max
+    print(eta_switch)
+    for t in range(t_maxmax):
+        eta = eta_max * np.exp(-lamb * t)
+        if (eta < eta_switch): break
+
+        etas[t] = eta
+
+    tau = t
+    for t in range(t,t_maxmax):
+        eta = eta_switch / (1 + lamb*(t-tau))
+        etas[t] = eta
+        #etas[t] = 1e-7
+
+    #etas = [eps for t in range(t_maxmax)]
+    #print(etas)
+    return np.array(etas)
+
 class SMDS:
     def __init__(self,dissimilarities,init_pos=np.array([])):
         self.d = scale_matrix(dissimilarities,math.pi)
@@ -53,11 +82,13 @@ class SMDS:
         #indices = [i for i in range(len(self.d))]
         indices = list(itertools.combinations(range(self.n), 2))
         random.shuffle(indices)
+
+        schedule = schedule_convergent(self.d,30,0.01,200)
         #random.shuffle(indices)
 
         weight = 1/choose(self.n,2)
 
-        while count < 100:
+        for epoch in range(len(schedule)):
             for k in range(len(indices)):
                 i = indices[k][0]
                 j = indices[k][1]
@@ -79,8 +110,10 @@ class SMDS:
                 self.X[i] = self.X[i] - m[0]
                 self.X[j] = self.X[j] - m[1]
 
-            step = self.get_step(count,num_iter,schedule)
-
+            step = schedule[epoch]
+            #step = 0.01
+            if epoch > 50:
+                break
 
 
             count += 1

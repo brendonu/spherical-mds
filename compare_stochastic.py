@@ -10,6 +10,19 @@ from graph_functions import *
 import matplotlib.pyplot as plt
 from recursive_divide import subdivide_graph
 
+def sphere_dist(xi,xj):
+    sin, cos = np.sin, np.cos
+    l1, p1 = xi
+    l2, p2 = xj
+    return np.arccos(sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(l2-l1))
+
+def get_stress(X,d):
+    stress = 0
+    for i in range(len(d)):
+        for j in range(i):
+            stress += ((d[i][j] - sphere_dist(X[i],X[j])) ** 2 ) / d[i][j] ** 2
+    return stress
+
 def generate_stress_plots():
     G = gt.load_graph('outputs/bad_example.dot')
     #G = gt.complete_graph(4)
@@ -62,10 +75,47 @@ def save_animation():
     G = subdivide_graph(gt.load_graph('graphs/cube.xml'),20)
     d = get_distance_matrix(G,verbose=False)
 
-    frac = SMDS(d)
-    frac.solve(15,debug=True,schedule='frac')
-    name = 'new_outputs/cube_animation'
-    for i in range(len(frac.pos_history)):
-        output_sphere(G,frac.pos_history[i],name+str(i)+'.dot')
+    stress = np.zeros(51)
 
-save_animation()
+    for _ in range(30):
+
+        frac = SMDS(d)
+        frac.solve(100,debug=True,schedule='frac')
+
+        name = 'new_outputs/cube_animation'
+        for i in range(len(frac.pos_history)):
+            output_sphere(G,frac.pos_history[i],name+str(i)+'.dot')
+            stress[i] += get_stress(frac.pos_history[i],d)
+    stress /= 30
+    plt.suptitle("Average stress over iteration on SMDS")
+    plt.xlabel("Iteration")
+    plt.ylabel("Stress")
+    plt.plot(np.arange(len(stress)), stress)
+    plt.show()
+
+def distortion_plot():
+    Vs = [i for i in range(20,100,5)]
+    stress = np.zeros(len(Vs))
+    for v in range(len(Vs)):
+        G = subdivide_graph(gt.load_graph('graphs/cube.xml'),Vs[v])
+        d = get_distance_matrix(G,verbose=False)
+
+        for _ in range(30):
+
+            frac = SMDS(d)
+            frac.solve(100,debug=True,schedule='frac')
+            stress[v] += frac.calc_distortion()
+            name = 'new_outputs/cube_animation'
+            for i in range(len(frac.pos_history)):
+                output_sphere(G,frac.pos_history[i],name+str(i)+'.dot')
+
+    stress /= 30
+    plt.suptitle("Average distortion for increasing values of |V|")
+    plt.xlabel("|V|")
+    plt.ylabel("distortion")
+    plt.plot(np.arange(len(stress)), stress)
+    plt.savefig('figs/distortion_april')
+
+
+#save_animation()
+distortion_plot()
