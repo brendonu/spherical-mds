@@ -15,6 +15,35 @@ import copy
 import time
 import os
 
+def schedule_convergent(d,t_max,eps,t_maxmax):
+    w = np.divide(np.ones(d.shape),d**2,out=np.zeros_like(d), where=d!=0)
+    w_min,w_max = np.amin(w,initial=10000,where=w > 0), np.max(w)
+
+    eta_max = 1.0 / w_min
+    eta_min = eps / w_max
+
+    lamb = np.log(eta_max/eta_min) / (t_max-1)
+
+    # initialize step sizes
+    etas = np.zeros(t_maxmax)
+    eta_switch = 1.0 / w_max
+    print(eta_switch)
+    for t in range(t_maxmax):
+        eta = eta_max * np.exp(-lamb * t)
+        if (eta < eta_switch): break
+
+        etas[t] = eta
+
+    tau = t
+    for t in range(t,t_maxmax):
+        eta = eta_switch / (1 + lamb*(t-tau))
+        etas[t] = eta
+        #etas[t] = 1e-7
+
+    #etas = [eps for t in range(t_maxmax)]
+    #print(etas)
+    return np.array(etas)
+
 class MDS:
     def __init__(self,dissimilarities,geometry='euclidean',init_pos=np.array([])):
         self.d = scale_matrix(dissimilarities,math.pi)
@@ -42,42 +71,65 @@ class MDS:
         epsilon = 0.1
         self.eta_min = epsilon/self.w_max
 
+        self.history = []
+        self.pos_history = []
+
     def solve(self,num_iter=100,epsilon=1e-3,debug=True):
+        import autograd.numpy as np
+        from autograd import grad
+        from sklearn.metrics import pairwise_distances
+
+        sin, cos, asin, sqrt = np.sin, np.cos, np.arcsin, np.sqrt
+
+
         current_error,error,step,count = 1000,1,1,0
         prev_error = 1000000
 
-        indices = [i for i in range(self.n)]
-        random.shuffle(indices)
-        X = np.asarray(self.X)
+        steps = schedule_convergent(self.d,15,0.01,200)
 
-        while count < num_iter:
-            # Do all calculations under a "GradientTape" which tracks all gradients
-            loss = np.zeros(X.shape)
-            for i in range(len(X)):
-                for j in range(len(X)):
-                    if i != j:
-                        dist = self.geodesic(X[i],X[j])
-                        loss[i] += 2*self.w[i][j]*self.grad(X[i],X[j])*((dist-self.d[i][j])/2)
-                        #loss[i] = normalize(loss[i])
-            #print(loss)
-            step = self.compute_step_size(count,num_iter)
-            step = step if step < 0.1 else 0.1
-            # step = 0.1
-            X = X - step*loss
-            self.X = X
-            stress = self.calc_stress()
-            if abs((stress-prev_error)/prev_error) < epsilon and count > 100:
-                pass
-            prev_error = stress
+        X,d,w = self.X, self.d, self.w
+        n = len(X)
+        tol = np.ones( (n,n) )* 1e-13
 
-            if debug:
-                print(count)
-                print(stress)
-                print()
+        def sphere_stress(X):
 
-            count += 1
+            lat = X[:,0]
+            lng = X[:,1]
+            diff_lat = lat[:,None] - lat
+            diff_lng = lng[:,None] - lng
+            diff = sin(diff_lat/2)**2 + cos(lat[:,None])*cos(lat) * sin(diff_lng/2)**2
+            Y =  2 * asin(sqrt(np.maximum(diff,tol)))
+            residual = (Y-d) ** 2
+            return residual.sum() / (n**2)
+
+        step,change,momentum = 1, 0.0, 0.5
+        grad_stress = grad(sphere_stress)
+        cost = 0
+
+        for epoch in range(num_iter):
+            x_prime = grad_stress(X)
+
+            new_change = step * x_prime + momentum * change
+
+            X -= new_change
+
+            if abs(new_change-change).max() < 1e-3: momentum = 0.8
+            #if abs(new_change-change).max() < 1e-5: break
+            #sizes[epoch] = movement(X,new_change,step)
+
+            change = new_change
+
+            # step = steps[epoch] if epoch < len(steps) else steps[-1]
+            # step = 1/(np.sqrt(epoch + 1))
+            if epoch % 500 == 0 and epoch > 1:
+                step = step /10
+
+            print(sphere_stress(X))
+            self.history.append(sphere_stress(X))
+            #self.X = X
         self.X = X
-        return self.X
+        return X
+
 
     def geodesic(self,xi,xj):
         if self.geometry == 'euclidean':
@@ -246,11 +298,10 @@ def chord_dist(xi,xj):
     return pow(2 - 2*tf.math.sin(xi[1])*tf.math.sin(xj[1])*tf.math.cos(abs(xi[0]-xj[0]))- 2*tf.math.cos(xi[1])*tf.math.cos(xj[1]),0.5)
 
 def sphere_dist(xi,xj):
-    lamb1,phi1 = xi
-    lamb2,phi2 = xj
-    sin = np.sin
-    cos = np.cos
-    return np.arccos(sin(phi1)*sin(phi2) + cos(phi1)*cos(phi2)*cos(lamb2-lamb1))
+    sin, cos = np.sin, np.cos
+    l1, p1 = xi
+    l2, p2 = xj
+    return np.arccos(sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(l2-l1))
 
 
 def euclid_dist(x1,x2):

@@ -78,12 +78,12 @@ class SMDS:
 
 
     def solve(self,num_iter=15,epsilon=1e-3,debug=False,schedule='fixed'):
-        current_error,delta_e,step,count = 1000,1,self.eta_max,0
+        current_error,delta_e,step,count = 1000,1,1,0
         #indices = [i for i in range(len(self.d))]
         indices = list(itertools.combinations(range(self.n), 2))
         random.shuffle(indices)
 
-        schedule = schedule_convergent(self.d,30,0.01,200)
+        schedule = schedule_convergent(self.d,15,0.01,num_iter)
         #random.shuffle(indices)
 
         weight = 1/choose(self.n,2)
@@ -112,8 +112,8 @@ class SMDS:
 
             step = schedule[epoch]
             #step = 0.01
-            if epoch > 50:
-                break
+            # if epoch > 50:
+            #     break
 
 
             count += 1
@@ -185,8 +185,8 @@ def gradient(p,q):
     sin, cos = np.sin, np.cos
     rt = lambda x: pow(x,0.5)
 
-    x,y = p
-    a,b = q
+    y,x = p
+    b,a = q
 
     denom = 1/rt(1-pow((sin(b)*sin(y) + cos(b)*cos(y)*cos(a-x)),2))
 
@@ -196,8 +196,8 @@ def gradient(p,q):
     da = -dx
     db = denom * (sin(b)*cos(y)*cos(a-x) - sin(y)*cos(b))
 
-    return np.array([[dx,dy],
-                     [da,db]])
+    return np.array([[dy,dx],
+                     [db,da]])
 
 def pair_stress(p,q,t):
     sq = lambda x: pow(x,2)
@@ -212,8 +212,8 @@ def geodesic(xi,xj):
 
 def sphere_dist(xi,xj):
     sin, cos = np.sin, np.cos
-    l1, p1 = xi
-    l2, p2 = xj
+    p1,l1 = xi
+    p2,l2 = xj
     return np.arccos(sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(l2-l1))
 
 def choose(n,k):
