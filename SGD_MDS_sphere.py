@@ -44,7 +44,7 @@ def gradient(p,q):
 
 @jit(nopython=True,cache=True)
 def solve_stochastic(d,indices,
-                    w=None,num_iter=100, epsilon=1e-3,debug=False,schedule='fixed',init_pos=None,
+                    w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='fixed',init_pos=None,
                     switch_step=30,steps=None):
 
     # from autograd import grad
@@ -63,7 +63,7 @@ def solve_stochastic(d,indices,
 
     #grab learning rate
     #steps = schedule_convergent(d,switch_step,epsilon,num_iter)
-    steps = np.ones(num_iter) * 0.001
+    #steps = np.ones(num_iter) * 0.001
     max_change, shuffle,cap = 0, random.shuffle, 0.5
     tol = np.ones( (n,n) ) * 1e-13
 
@@ -84,9 +84,17 @@ def solve_stochastic(d,indices,
 
     geodesic = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
 
+    def stress(X):
+        stress = 0
+        for i in range(n):
+            for j in range(i):
+                stress += w[i][j]*pow(geodesic(X[i],X[j])-d[i][j],2)
+        return stress / pow(n,2)
+
+
     error = lambda x1,x2, dij: (geodesic(x1,x2) - dij) **2
     #haver_grad = grad(error)
-
+    prev_error, now_error = 0,0
     for step in steps:
 
         for i,j in indices:
@@ -94,7 +102,7 @@ def solve_stochastic(d,indices,
             wc = cap if wc > cap else wc
 
             #gradient
-            g = gradient(X[i],X[j]) * 2 * geodesic(X[i],X[j])
+            g = gradient(X[i],X[j]) * 2 * (geodesic(X[i],X[j])-d[i][j])
             m = wc*g
 
 
@@ -102,7 +110,12 @@ def solve_stochastic(d,indices,
             X[j] = X[j] - m[1]
 
         shuffle(indices)
-        print(step)
+        now_error = stress(X)
+        if abs(now_error-prev_error) < epsilon:
+            break
+        prev_error = now_error
+        if debug:
+            print(stress(X))
 
 
     return X
@@ -121,7 +134,6 @@ def schedule_convergent(d,t_max,eps,t_maxmax):
     # initialize step sizes
     etas = np.zeros(t_maxmax)
     eta_switch = 1.0 / w_max
-    print(eta_switch)
     for t in range(t_maxmax):
         eta = eta_max * np.exp(-lamb * t)
         if (eta < eta_switch): break
@@ -170,7 +182,7 @@ class SMDS:
     def solve(self,num_iter=15,epsilon=1e-3,debug=False,schedule='fixed'):
         steps = schedule_convergent(self.d,30,0.01,num_iter)
         X = solve_stochastic(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
-                            w=None,num_iter=num_iter,steps=steps)
+                            w=None,num_iter=num_iter,steps=steps,debug=debug)
         self.X = X
         return X
 

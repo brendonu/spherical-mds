@@ -27,7 +27,7 @@ def schedule_convergent(d,t_max,eps,t_maxmax):
     # initialize step sizes
     etas = np.zeros(t_maxmax)
     eta_switch = 1.0 / w_max
-    print(eta_switch)
+    #print(eta_switch)
     for t in range(t_maxmax):
         eta = eta_max * np.exp(-lamb * t)
         if (eta < eta_switch): break
@@ -74,7 +74,7 @@ class MDS:
         self.history = []
         self.pos_history = []
 
-    def solve(self,num_iter=100,epsilon=1e-3,debug=True):
+    def solve(self,num_iter=100,epsilon=1e-3,debug=False):
         import autograd.numpy as np
         from autograd import grad
         from sklearn.metrics import pairwise_distances
@@ -114,7 +114,7 @@ class MDS:
             X -= new_change
 
             if abs(new_change-change).max() < 1e-3: momentum = 0.8
-            #if abs(new_change-change).max() < 1e-5: break
+            if abs(new_change-change).max() < 1e-5: break
             #sizes[epoch] = movement(X,new_change,step)
 
             change = new_change
@@ -123,8 +123,8 @@ class MDS:
             # step = 1/(np.sqrt(epoch + 1))
             if epoch % 500 == 0 and epoch > 1:
                 step = step /10
-
-            print(sphere_stress(X))
+            if debug:
+                print(sphere_stress(X))
             self.history.append(sphere_stress(X))
             #self.X = X
         self.X = X

@@ -195,7 +195,7 @@ def distortion(X,d):
     return dist/choose(len(X),2)
 #save_animation()
 #compare_plot(5)
-n = 20
+n = 200
 x1 = np.random.uniform(0, math.pi, (n,1) )
 x2 = np.random.uniform(0,2*math.pi, (n,1) )
 X = np.concatenate( (x1,x2), axis=1 )
@@ -207,10 +207,10 @@ from sklearn.metrics import pairwise_distances
 d = pairwise_distances(X,metric='haversine')
 
 classic = MDS(d,geometry='spherical')
-#classic.solve(500,debug=True)
+classic.solve(500,debug=True)
 
 stochastic = SMDS(d)
-stochastic.solve(200,debug=True)
+stochastic.solve(500,debug=True)
 print("Classic final distortion: {}".format(distortion(classic.X,d)))
 print("stochastic final distortion: {}".format(distortion(stochastic.X,d)))
 
