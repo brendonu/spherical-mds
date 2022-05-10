@@ -102,7 +102,7 @@ class MDS:
             residual = (Y-d) ** 2
             return residual.sum() / (n**2)
 
-        step,change,momentum = 1, 0.0, 0.5
+        step,change,momentum = 10, 0.0, 0.5
         grad_stress = grad(sphere_stress)
         cost = 0
 

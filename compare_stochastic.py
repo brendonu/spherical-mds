@@ -195,7 +195,7 @@ def distortion(X,d):
     return dist/choose(len(X),2)
 #save_animation()
 #compare_plot(5)
-n = 200
+n = 20
 x1 = np.random.uniform(0, math.pi, (n,1) )
 x2 = np.random.uniform(0,2*math.pi, (n,1) )
 X = np.concatenate( (x1,x2), axis=1 )
@@ -207,7 +207,7 @@ from sklearn.metrics import pairwise_distances
 d = pairwise_distances(X,metric='haversine')
 
 classic = MDS(d,geometry='spherical')
-classic.solve(500,debug=True)
+#classic.solve(500,debug=True)
 
 stochastic = SMDS(d)
 stochastic.solve(200,debug=True)
@@ -216,7 +216,7 @@ print("stochastic final distortion: {}".format(distortion(stochastic.X,d)))
 
 plt.plot(np.arange(len(classic.history)),classic.history)
 plt.plot(np.arange(len(stochastic.history)),stochastic.history)
-plt.show()
+#plt.show()
 #X = np.ones((5,5))
 from autograd import grad
 import scipy.spatial.distance
@@ -230,11 +230,11 @@ tol = np.ones( (X.shape[0], X.shape[0]) ) * 1e-13
 def haversine(X):
     lat = X[:,0]
     lng = X[:,1]
-    diff_lat = lat[:,None] - lat
-    diff_lng = lng[:,None] - lng
-    diff = sin(diff_lat/2)**2 + cos(lat[:,None])*cos(lat) * sin(diff_lng/2)**2
+    diff_lat = lat.reshape((n,1)) - lat
+    diff_lng = lng.reshape((n,1)) - lng
+    diff = sin(diff_lat/2)**2 + cos(lat.reshape((n,1)))*cos(lat) * sin(diff_lng/2)**2
     Y =  2 * asin(sqrt(np.maximum(diff,tol)))
     residual = (Y-d) ** 2
     return residual.sum() / (n**2)
 
-#print(haversine(X))
+print(haversine(X))
