@@ -15,6 +15,7 @@ import copy
 import time
 import os
 
+
 def schedule_convergent(d,t_max,eps,t_maxmax):
     w = np.divide(np.ones(d.shape),d**2,out=np.zeros_like(d), where=d!=0)
     w_min,w_max = np.amin(w,initial=10000,where=w > 0), np.max(w)

@@ -65,4 +65,4 @@ def compare(sizes = (20,100,10), iter=5):
     np.savetxt('data/classic_results.csv',data_classic,delimiter=',',header=header_txt)
     np.savetxt('data/stochastic_results.csv',data_stoch,delimiter=',',header=header_txt)
 
-compare(sizes=(20,500,10),iter=5)
+compare(sizes=(20,50,10),iter=2)
