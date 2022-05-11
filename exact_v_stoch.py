@@ -45,6 +45,7 @@ def compare(sizes = (20,100,10), iter=5):
     data_stoch = np.zeros( (iter*len(num_data), 3) )
 
     for size in range(len(num_data)):
+        print(num_data[size])
         X = generate_spherical_data(n=num_data[size])
         d = pairwise_distances(X,metric='haversine')
 
@@ -62,7 +63,7 @@ def compare(sizes = (20,100,10), iter=5):
             data_stoch[size*iter+a] = np.array([end_stoch-start_stoch, distortion(X_s,d),stress(X_s,d)])
 
     header_txt = "Starting from {}, size increases by {} every {} rows. Columns are time, distortion, stress".format(i,k,iter)
-    np.savetxt('data/classic_results.csv',data_classic,delimiter=',',header=header_txt)
-    np.savetxt('data/stochastic_results.csv',data_stoch,delimiter=',',header=header_txt)
+    np.savetxt('data/classic_results1.csv',data_classic,delimiter=',',header=header_txt)
+    np.savetxt('data/stochastic_results1.csv',data_stoch,delimiter=',',header=header_txt)
 
-compare(sizes=(20,500,10),iter=5)
+compare(sizes=(100,1000,100),iter=5)
