@@ -1,23 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data_c = np.loadtxt('data/classic_results.csv',skiprows=1,delimiter=',')
-data_s = np.loadtxt('data/stochastic_results.csv',skiprows=1,delimiter=',')
+def read_and_parse(filename, iter=2, trait=1):
+    data = np.loadtxt(filename,skiprows=1,delimiter=',')
+    x = data[:,trait]
+    return x.reshape( (len(data) // iter, iter ) ).mean(axis=1)
 
-iter = 2
+f_name = 'data/hyperbolic_results.csv'
+iter = 5
 trait = 1
 
-x1 = data_c[:,trait]
-print(x1)
-time_classic = x1.reshape( (len(data_c)//iter, iter)).mean(axis=1)
 
-x2 = data_s[:,trait]
+euclid = read_and_parse(f_name,iter=iter,trait=0)
+sphere = read_and_parse(f_name,iter=iter,trait=1)
+hyper = read_and_parse(f_name,iter=iter,trait=2)
 
-time_stoch = x2.reshape( ( len(data_s)//iter, iter ) ).mean(axis=1)
-print(time_stoch)
-
-y = list( range(20,41,10) )
-plt.plot(y,time_classic,label="Standard GD time")
-plt.plot(y,time_stoch, label="SGD time")
+x = [i*100+100 for i in range(len(euclid))]
+plt.plot(x,euclid,label="Euclidean MDS")
+plt.plot(x,sphere,label="SMDS")
+plt.plot(x,hyper,label="HMDS")
 plt.legend()
+plt.ylim(0,0.1)
 plt.show()

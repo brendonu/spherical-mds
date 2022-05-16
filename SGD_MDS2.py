@@ -107,7 +107,7 @@ def sgd(X,d,w,indices,schedule,t,tol):
             l_sum = 1+t
 
             #Final gradient w.r.t X[i]
-            m = stress 
+            m = stress
 
             #Update positions
             X[i] -= m
@@ -136,7 +136,7 @@ def schedule_convergent(d,t_max,eps,t_maxmax):
     # initialize step sizes
     etas = np.zeros(t_maxmax)
     eta_switch = 1.0 / w_max
-    print(eta_switch)
+    #print(eta_switch)
     for t in range(t_maxmax):
         eta = eta_max * np.exp(-lamb * t)
         if (eta < eta_switch): break
@@ -188,7 +188,7 @@ class SGD:
         #sched = lambda count: 1/np.sqrt(count+1)
         return np.array([sched(count) for count in range(100)])
 
-    def solve(self,num_iter,debug=False,t=0.6,tol=1e-3,eps=0.1):
+    def solve(self,num_iter,debug=False,t=0.6,tol=1e-6,eps=0.1):
         import itertools
 
         indices = np.array(list(itertools.combinations(range(self.n), 2)))

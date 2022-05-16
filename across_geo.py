@@ -14,7 +14,7 @@ acosh, cosh, sinh = np.arccosh, np.cosh, np.sinh
 
 sphere_geo = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
 hyper_geo = lambda u,v: acosh( cosh(u[1])*cosh(v[0]-u[0])*cosh(v[1]) - sinh(u[1])*sinh(v[1]) )
-euclid_geo = lambda u,v: sqrt(np.sum(u**2 + v**2))
+euclid_geo = lambda u,v: np.linalg.norm(u-v)
 
 def generate_spherical_data(n=100):
     x1 = np.random.uniform(0,math.pi, (n,1) )
@@ -24,7 +24,7 @@ def generate_spherical_data(n=100):
 def generate_unit_circle(n=100):
     return np.random.uniform(0,1, (n,2) )
 
-def dist_matrix(X,metric=np.linalg.norm):
+def dist_matrix(X,metric=euclid_geo):
     n = len(X)
 
     d = np.zeros( (n,n) )
@@ -64,6 +64,7 @@ def compare(sizes = (20,100,10), iter=5):
     for geom in ['euclidean', 'spherical', 'hyperbolic']:
         data = np.zeros( (iter*len(num_data), 3) )
         metric = euclid_geo if geom == 'euclidean' else sphere_geo if geom == 'spherical' else hyper_geo
+        print(geom)
 
         for size in range(len(num_data)):
             if geom == 'spherical':
@@ -72,7 +73,7 @@ def compare(sizes = (20,100,10), iter=5):
                 X = generate_unit_circle(n=num_data[size])
 
             d = dist_matrix(X,metric=metric)
-            print(size)
+            print(num_data[size])
 
             for a in range(iter):
 
