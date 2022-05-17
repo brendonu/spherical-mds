@@ -1,10 +1,10 @@
 import ssgetpy
 import numpy as np
 
-result = ssgetpy.search(rowbounds=(None,2000),colbounds=(None,2000),limit=10000)
-
-for mat in result:
-    mat.download(format='MAT',destpath='/home/jacob/Desktop/spherical-mds/matrices')
+# result = ssgetpy.search(rowbounds=(None,2000),colbounds=(None,2000),limit=10000)
+#
+# for mat in result:
+#     mat.download(format='MAT',destpath='/home/jacobmiller1/Desktop/spherical-mds/matrices')
 
 import scipy.io as sio
 
@@ -40,4 +40,5 @@ for graph in graph_paths:
     X = np.concatenate( (x1,x2), axis=1)
     X = np.delete(X, np.nonzero(~y),axis=0).astype(int)
 
-    np.savetxt("txt_graphs/{}.txt".format(graph.split('.')[0]), X,fmt='%.d', delimiter=',' )
+    if np.any(X):
+        np.savetxt("txt_graphs/{}.txt".format(graph.split('.')[0]), X,fmt='%.d', delimiter=',' )

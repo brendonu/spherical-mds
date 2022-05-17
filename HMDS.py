@@ -18,6 +18,13 @@ def geodesic(u,v):
     return acosh( cosh(u[1])*cosh(v[0]-u[0])*cosh(v[1]) - sinh(u[1])*sinh(v[1]) )
 
 @jit(nopython=True)
+def potential_norm(v):
+    norm = np.sum(v**2) ** 0.5
+    if norm > 1:
+        return v/norm
+    return v
+
+@jit(nopython=True)
 def grad(u,v):
     a,b = u
     c,d = v
@@ -30,7 +37,10 @@ def grad(u,v):
 
     grad = np.array([   [da,db],
                         [dc,dd] ]) / bottom
-    return np.minimum(grad,np.ones(grad.shape)*10)
+
+    grad[0] = potential_norm(grad[0])
+    grad[1] = potential_norm(grad[1])
+    return grad
 
 @jit(nopython=True)
 def satisfy(u,v,d,w,step):
@@ -66,7 +76,7 @@ def calc_stress(X,d,w):
     stress = 0
     for i in range(len(X)):
         for j in range(i):
-            stress += (1/pow(d[i][j],2))*pow(geodesic(X[i],X[j])-d[i][j],2)
+            stress += pow(geodesic(X[i],X[j])-d[i][j],2)/(d[i][j]**2)
     return pow(stress,0.5)
 
 @jit(nopython=True)
@@ -85,7 +95,7 @@ def calc_distortion(X,d):
     return (1/choose1(len(X),2))*distortion
 
 @jit(nopython=True)
-def stoch_solver(X,d,w,indices,schedule,num_iter=15,epsilon=1e-3):
+def stoch_solver(X,d,w,indices,schedule,num_iter=15,epsilon=1e-3,debug=True):
     step = schedule[0]
     shuffle = random.shuffle
 
@@ -99,6 +109,8 @@ def stoch_solver(X,d,w,indices,schedule,num_iter=15,epsilon=1e-3):
         shuffle(indices) #Shuffle pair order
         #print(calc_stress(X,d,w))
         #print(calc_stress(X,d,w))
+        if debug:
+            print(calc_stress(X,d,w))
 
 
 
@@ -268,21 +280,21 @@ class HMDS:
         self.steps = schedule_convergent(self.d, 30, 0.01, 200)
 
 
-    def solve(self,num_iter=20,debug=False,until_conv=False):
+    def solve(self,num_iter=500,debug=False,until_conv=False):
         X = self.X
         d = self.d
         w = self.w
         if self.opt_scale:
             return optimize_scale(X,d,w,num_iter,until_conv,self.indices,self.steps)
-        if debug:
-            solve_step = stoch_solver_debug(X,d,w,self.indices,self.steps,num_iter=num_iter)
-            #print(next(solve_step))
-            Xs = [x for x in solve_step]
-            self.stress_hist = [calc_stress(x,d,w) for x in Xs]
-            self.X =  Xs[-1]
-            return
+        # if debug:
+        #     solve_step = stoch_solver_debug(X,d,w,self.indices,self.steps,num_iter=num_iter)
+        #     #print(next(solve_step))
+        #     Xs = [x for x in solve_step]
+        #     self.stress_hist = [calc_stress(x,d,w) for x in Xs]
+        #     self.X =  Xs[-1]
+        #     return
 
-        X = stoch_solver(self.X,self.d,self.w,self.indices,self.steps,num_iter=num_iter)
+        X = stoch_solver(self.X,self.d,self.w,self.indices,self.steps,num_iter=num_iter,debug=debug)
         self.X = X
         return X
 

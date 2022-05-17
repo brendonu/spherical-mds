@@ -22,7 +22,7 @@ def generate_spherical_data(n=100):
     return np.concatenate( (x1,x2), axis=1 )
 
 def generate_unit_circle(n=100):
-    return np.random.uniform(0,1, (n,2) )
+    return np.random.uniform(0,0.5, (n,2) )
 
 def dist_matrix(X,metric=euclid_geo):
     n = len(X)
@@ -99,5 +99,53 @@ def compare(sizes = (20,100,10), iter=5):
         header_txt = "Starting from {}, size increases by {} every {} rows. Columns are euclid, sphere, hyperbolic".format(i,k,iter)
         np.savetxt("data/{}_results.csv".format(geom),data,delimiter=',',header=header_txt)
 
+#import autograd.numpy as np
+nlog, nabs, nconj = np.log, np.absolute, np.conj
 
-compare(sizes=(100,1001,100), iter=5)
+def poin_dist1(q,p):
+    top = ( nabs( 1- np.conj(q)*p ) + nabs( p-q ) )
+    bottom = nlog( nabs( 1- np.conj(q)*p ) - nabs( p-q ) )
+    return top-bottom
+
+def poin_dist2(q,p):
+    return nlog( ( nabs( 1- np.conj(q)*p ) + nabs( p-q ) ) / ( nabs( 1- np.conj(q)*p ) - nabs( p-q ) ) )
+
+def poin_dist3(q,p):
+    diff = abs(p-q)
+    first = abs( 1- q.conjugate()*p )
+    return math.log( (first+diff)/ (first-diff))
+
+import_mod = '''import numpy as np; import math; nlog, nabs, nconj = np.log, np.absolute, np.conj; import random;
+from __main__ import poin_dist1;
+from __main__ import poin_dist2;
+from __main__ import poin_dist3'''
+
+try1 = '''
+poin_dist1(random.random(),random.random())
+'''
+
+try2 = '''
+poin_dist2(random.random(),random.random())
+'''
+
+try3 = '''
+poin_dist3(random.random(),random.random())
+'''
+
+u = 0+0j
+v = 0.09+0.1j
+print(poin_dist1(u,v))
+print(poin_dist2(u,v))
+print(poin_dist3(u,v))
+import timeit
+print("Method 1 takes: {}".format( timeit.timeit(setup = import_mod,
+                     stmt = try1,
+                     number = 10000)/10000 ))
+
+print("Method 2 takes: {}".format( timeit.timeit(setup = import_mod,
+                     stmt = try2,
+                     number = 10000)/10000 ))
+
+print("Method 3 takes: {}".format( timeit.timeit(setup = import_mod,
+                     stmt = try3,
+                     number = 10000)/10000 ))

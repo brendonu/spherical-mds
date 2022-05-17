@@ -188,7 +188,7 @@ class SGD:
         #sched = lambda count: 1/np.sqrt(count+1)
         return np.array([sched(count) for count in range(100)])
 
-    def solve(self,num_iter,debug=False,t=0.6,tol=1e-6,eps=0.1):
+    def solve(self,num_iter=60,debug=False,t=0.6,tol=1e-6,eps=0.1):
         import itertools
 
         indices = np.array(list(itertools.combinations(range(self.n), 2)))

@@ -4,6 +4,7 @@ new_outputs/
 data/
 matrices/
 txt_graphs/
+sgd_drawings/
 
 
 # Byte-compiled / optimized / DLL files

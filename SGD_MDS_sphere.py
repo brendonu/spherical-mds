@@ -179,7 +179,7 @@ class SMDS:
         self.history = []
         self.pos_history = []
 
-    def solve(self,num_iter=15,epsilon=1e-3,debug=False,schedule='fixed'):
+    def solve(self,num_iter=500,epsilon=1e-3,debug=False,schedule='fixed'):
         steps = schedule_convergent(self.d,30,0.01,num_iter)
         X = solve_stochastic(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
                             w=None,num_iter=num_iter,steps=steps,debug=debug)
