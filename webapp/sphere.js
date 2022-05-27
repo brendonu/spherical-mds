@@ -1,50 +1,3 @@
-<!DOCTYPE html>
-<meta charset="utf-8">
-<style>
-    #sphere {
-        stroke: #444;
-        stroke-width: 2;
-        fill: #CCFFE5;
-    }
-    .polygons {
-        stroke: #444;
-        stroke-width: 2;
-        fill: none;
-    }
-
-    .sites {
-        stroke: black;
-        fill: white;
-    }
-
-    .links {
-        stroke: black;
-        stroke-width: 1;
-        fill: none;
-    }
-    .graticule {
-      stroke: grey;
-      stroke-width: .2;
-      fill: none;
-    }
-
-    body{
-      background-color: grey;
-    }
-
-</style>
-
-<svg width="960" height="600"></svg>
-
-<script src="https://d3js.org/d3.v5.min.js"></script>
-<script src="https://unpkg.com/d3-delaunay@5"></script>
-<script src="https://unpkg.com/d3-geo-voronoi@1.5"></script>
-<script src="https://threejs.org/build/three.min.js"></script>
-<script src="dotparser.min.js"></script>
-
-
-<script>
-
 function readTextFile(file)
   {
       var rawFile = new XMLHttpRequest();
@@ -341,78 +294,40 @@ var width = 1000,
     y: 0
   };
 
-var Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
+console.log(G)
 
-points = setGraph(Graph,null)
-nodes = {}
-nodePos = []
-edges = []
+//var Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
+
+
+let points = {
+  type: "FeatureCollection",
+  features: G['nodes'].map((val, i) => {
+    return {type:"Feature",
+            geometry: {
+              type: "Point",
+              coordinates: val['pos'],
+              label: val['id']
+            }
+      }
+  })
+}
+console.log(points)
+
+myLink = {
+  type: "LineString",
+  coordinates: [nodes[source.id].spherePos,nodes[target.id].spherePos]
+}
+
+let edges = G['edges'].map( (val,i) => {type: "LineString",
+                            coordinates: [val['source']  } )
 
 //Map = makeMap(myGraph);
-
-function setGraph(myGraph,points) {
-  edges = []
-  nodes = {}
-  nodePos = []
-  for (i in myGraph.children){
-    newObj = {};
-    if (myGraph.children[i].type === 'node_stmt'){
-      for(j in myGraph.children[i].attr_list){
-        newObj[myGraph.children[i].attr_list[j].id] = myGraph.children[i].attr_list[j].eq;
-      }
-      newObj['label'] =  myGraph.children[i].node_id.id;
-      newObj['spherePos'] = placeOnSphereNew(newObj['pos']);
-      nodes[myGraph.children[i].node_id.id] = newObj;
-      nodePos.push({type:"Feature",
-        geometry: {
-          type: "Point",
-          coordinates: newObj['spherePos'],
-          label: newObj['label']
-        }
-      }
-     )
-    }
-    else if(myGraph.children[i].type === 'edge_stmt'){
-      source = myGraph.children[i].edge_list[0];
-      target = myGraph.children[i].edge_list[1];
-      myLink = {
-        type: "LineString",
-        coordinates: [nodes[source.id].spherePos,nodes[target.id].spherePos]
-      }
-      console.log(myGraph.children[i].edge_list[0])
-      edges.push([myLink]);
-      }
-  }
-  if(!points){
-    points = {
-      type: "FeatureCollection",
-      features: nodePos
-    }
-  }else{
-    console.log(nodePos)
-    console.log(i)
-    console.log(points.features)
-    for(let i = 0; i<points.features.length;i++){
-      points.features[i].geometry.coordinates = nodePos[i].geometry.coordinates
-    }
-  }
-  return points
-}
-
-var polygons2 = {
-  type: "FeatureCollection",
-  'features': Map.polygonList
-}
-
-
 
 
 var svg = d3.select("svg");
 
 var projection = d3.geoOrthographic(),
     path = d3.geoPath().projection(projection);
-
-console.log(path)
 
 
 // zoom AND rotate
@@ -554,40 +469,10 @@ function changeProjection(){
   updatePaths(svg);
 }
 
-let iteration = 0
-
-function changeData(){
-  // svg.selectAll('*').remove()
-  // svg.append('path')
-  //     .attr('id', 'sphere')
-  //     .datum({ type: "Sphere" })
-  //     .attr('d', path);
-  Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
-  setGraph(Graph,points)
-  updateData(points)
-  updatePaths(svg)
-
-  iteration += 1
-  if(iteration <= 100){
-    setTimeout(changeData,5000)
-  }
-}
-
-setTimeout(changeData,1000)
 
 // gentle animation
-/*d3.interval(function(elapsed) {
+d3.interval(function(elapsed) {
     projection.rotate([ elapsed / 150, 0 ]);
     svg.selectAll('path')
         .attr('d', path);
-}, 50);*/
-</script>
-<body>
-  <select name="Projection" id="projection" onchange="changeProjection()">
-    <option value="orthographic">Orthographic</option>
-    <option value="stereographic">Stereographic</option>
-    <option value="mercator">Mercator</option>
-    <option value="equalearth">Equal Earth</option>
-  </select>
-
-</body>
+}, 50);

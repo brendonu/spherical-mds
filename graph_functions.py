@@ -1,6 +1,9 @@
 import graph_tool.all as gt
 import numpy as np
 
+def apsp(G):
+    return np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)
+
 #From tsNET implementation
 
 def get_shortest_path_distance_matrix(g, weights=None):
@@ -78,28 +81,28 @@ def lat_long_to_cart(v):
         return np.array([x,y,z])
 
 # Test. Note that we don't need to normalize the vectors.
-
-import math
-def polar(long,lat):
-    return Vector(math.cos(long)*math.cos(lat), math.sin(long)*math.cos(lat), math.sin(lat))
-
-n0 = polar(0.7007052816356313,5.212651188707541)
-n1 = polar(3.07525337476615,3.1279802552648364)
-n2 = polar(1.0083447462212305,3.96551909587155)
-n3 = polar(1.846486454434095,2.9836936482532725)
-
-
-
-print(n0)
-L1 = Pair(n0,n1)
-L2 = Pair(n2,n3)
-
-print(intersects(L1,L2))
-deg = math.pi/180
-print(intersects(Pair(polar(0,0), polar(50*deg,50*deg)),
- Pair(polar(26*deg,25*deg), polar(80*deg,-30*deg))))
-
-print(-0.0<0)
+#
+# import math
+# def polar(long,lat):
+#     return Vector(math.cos(long)*math.cos(lat), math.sin(long)*math.cos(lat), math.sin(lat))
+#
+# n0 = polar(0.7007052816356313,5.212651188707541)
+# n1 = polar(3.07525337476615,3.1279802552648364)
+# n2 = polar(1.0083447462212305,3.96551909587155)
+# n3 = polar(1.846486454434095,2.9836936482532725)
+#
+#
+#
+# print(n0)
+# L1 = Pair(n0,n1)
+# L2 = Pair(n2,n3)
+#
+# print(intersects(L1,L2))
+# deg = math.pi/180
+# print(intersects(Pair(polar(0,0), polar(50*deg,50*deg)),
+#  Pair(polar(26*deg,25*deg), polar(80*deg,-30*deg))))
+#
+# print(-0.0<0)
 
 
 def count_intersection(edges,X):

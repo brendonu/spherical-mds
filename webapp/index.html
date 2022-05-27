@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    #sphere {
+        stroke: #444;
+        stroke-width: 2;
+        fill: #CCFFE5;
+    }
+    .polygons {
+        stroke: #444;
+        stroke-width: 2;
+        fill: none;
+    }
+
+    .sites {
+        stroke: black;
+        fill: white;
+    }
+
+    .links {
+        stroke: black;
+        stroke-width: 1;
+        fill: none;
+    }
+    .graticule {
+      stroke: grey;
+      stroke-width: .2;
+      fill: none;
+    }
+
+    body{
+      background-color: grey;
+    }
+
+</style>
+
+<svg width="960" height="600"></svg>
+
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/d3-delaunay@5"></script>
+<script src="https://unpkg.com/d3-geo-voronoi@1.5"></script>
+<script src="https://threejs.org/build/three.min.js"></script>
+<script src="dotparser.min.js"></script>
+
+<script src='data.js'></script>
+<script src="sphere.js"></script>
+<body>
+  <select name="Projection" id="projection" onchange="changeProjection()">
+    <option value="orthographic">Orthographic</option>
+    <option value="stereographic">Stereographic</option>
+    <option value="mercator">Mercator</option>
+    <option value="equalearth">Equal Earth</option>
+  </select>
+
+</body>

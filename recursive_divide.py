@@ -4,9 +4,7 @@ import random
 import pickle
 import numpy as np
 from SGD_MDS_sphere import SMDS, all_pairs_shortest_path,output_sphere
-from SGD_MDS import myMDS
-from SGD_hyperbolic import HMDS
-from MDS_classic import MDS
+
 from graph_functions import get_distance_matrix,subdivide_graph,subdivide_graph_recursive
 from graph_io import load_graph
 import time

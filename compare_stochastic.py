@@ -4,11 +4,11 @@ import random
 import pickle
 import numpy as np
 from SGD_MDS_sphere import SMDS, all_pairs_shortest_path,output_sphere
-from SGD_MDS import myMDS
-from MDS_classic import MDS
 from graph_functions import *
 import matplotlib.pyplot as plt
 from recursive_divide import subdivide_graph
+
+import graph_tool.all as gt
 
 # def sphere_dist(xi,xj):
 #     sin, cos = np.sin, np.cos
@@ -83,19 +83,12 @@ def save_animation():
 
         # frac = SMDS(d)
         # frac.solve(100,debug=True,schedule='frac')
-        frac = MDS(d,geometry='spherical')
-        frac.solve(n,debug=True)
+        frac = SMDS(d)
+        X = frac.solve(n,debug=True)
 
         name = 'new_outputs/cube_animation'
-        for i in range(len(frac.pos_history)):
-            output_sphere(G,frac.pos_history[i],name+str(i)+'.dot')
-            stress[i] += get_stress(frac.pos_history[i],d)
-    stress /= 30
-    plt.suptitle("Average stress over iteration on SMDS")
-    plt.xlabel("Iteration")
-    plt.ylabel("Stress")
-    plt.plot(np.arange(len(stress)), stress)
-    plt.show()
+        output_sphere(G,X,name+'0.dot')
+
 
 def distortion_plot():
     Vs = [i for i in range(20,100,5)]
@@ -181,6 +174,35 @@ def compare_plot(n=2):
     plt.legend()
     plt.show()
 
+def apsp(G):
+    return np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)
+
+sphere_geo = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
+
+def distortion(X,d,metric=sphere_geo):
+    dist = 0
+    for i in range(len(X)):
+        for j in range(i):
+            dist += abs( metric(X[i],X[j]) - d[i][j]) / d[i][j]
+    return dist/choose(len(X),2)
+
+def subdivide():
+    G = gt.load_graph('graphs/dodecahedron.xml')
+    d = apsp(G)
+    print(d.max())
+
+    y = np.linspace(0.3,2,100)
+    data = np.zeros( (len(y), 2) )
+    for i,a in enumerate(y):
+        print(a)
+        X = SMDS(a*d).solve(500)
+        data[i] = [a, distortion(X,a*d)]
+    np.savetxt('data/cube_scale.txt',data,delimiter=',')
+
+    return d.max()
+
+
+
 def choose(n,k):
     product = 1
     for i in range(1,k+1):
@@ -203,38 +225,51 @@ X = np.concatenate( (x1,x2), axis=1 )
 
 #d = dist_matrix( X, sphere_dist )
 
-from sklearn.metrics import pairwise_distances
-d = pairwise_distances(X,metric='haversine')
+# from sklearn.metrics import pairwise_distances
+# d = pairwise_distances(X,metric='haversine')
+#
+# classic = MDS(d,geometry='spherical')
+# classic.solve(500,debug=True)
+#
+# stochastic = SMDS(d)
+# stochastic.solve(500,debug=True)
+# print("Classic final distortion: {}".format(distortion(classic.X,d)))
+# print("stochastic final distortion: {}".format(distortion(stochastic.X,d)))
+#
+# plt.plot(np.arange(len(classic.history)),classic.history)
+# plt.plot(np.arange(len(stochastic.history)),stochastic.history)
+# #plt.show()
+# #X = np.ones((5,5))
+# from autograd import grad
+# import scipy.spatial.distance
+# import autograd.numpy as np
+#
+#
+# sin, cos, asin = np.sin, np.cos, np.arcsin
+# sqrt = np.sqrt
+# tol = np.ones( (X.shape[0], X.shape[0]) ) * 1e-13
+#
+# def haversine(X):
+#     lat = X[:,0]
+#     lng = X[:,1]
+#     diff_lat = lat.reshape((n,1)) - lat
+#     diff_lng = lng.reshape((n,1)) - lng
+#     diff = sin(diff_lat/2)**2 + cos(lat.reshape((n,1)))*cos(lat) * sin(diff_lng/2)**2
+#     Y =  2 * asin(sqrt(np.maximum(diff,tol)))
+#     residual = (Y-d) ** 2
+#     return residual.sum() / (n**2)
+#
+# print(haversine(X))
+diam = subdivide()
 
-classic = MDS(d,geometry='spherical')
-classic.solve(500,debug=True)
+data = np.loadtxt('data/cube_scale.txt',delimiter=',')
+X = data[:,0]
+dist = data[:,1]
+import pylab
+pylab.plot(X,dist)
+pylab.xlabel('scale factor')
+pylab.ylabel('distortion')
+pylab.suptitle("Dodecahedron \n Diameter {}. Expect to see min at pi/{} = {}".format(diam, diam, round(math.pi/diam,5)))
+pylab.show()
 
-stochastic = SMDS(d)
-stochastic.solve(500,debug=True)
-print("Classic final distortion: {}".format(distortion(classic.X,d)))
-print("stochastic final distortion: {}".format(distortion(stochastic.X,d)))
-
-plt.plot(np.arange(len(classic.history)),classic.history)
-plt.plot(np.arange(len(stochastic.history)),stochastic.history)
-#plt.show()
-#X = np.ones((5,5))
-from autograd import grad
-import scipy.spatial.distance
-import autograd.numpy as np
-
-
-sin, cos, asin = np.sin, np.cos, np.arcsin
-sqrt = np.sqrt
-tol = np.ones( (X.shape[0], X.shape[0]) ) * 1e-13
-
-def haversine(X):
-    lat = X[:,0]
-    lng = X[:,1]
-    diff_lat = lat.reshape((n,1)) - lat
-    diff_lng = lng.reshape((n,1)) - lng
-    diff = sin(diff_lat/2)**2 + cos(lat.reshape((n,1)))*cos(lat) * sin(diff_lng/2)**2
-    Y =  2 * asin(sqrt(np.maximum(diff,tol)))
-    residual = (Y-d) ** 2
-    return residual.sum() / (n**2)
-
-print(haversine(X))
+save_animation()
