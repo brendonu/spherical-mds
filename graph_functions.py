@@ -1,5 +1,13 @@
 import graph_tool.all as gt
 import numpy as np
+from sklearn.metrics.pairwise import haversine_distances
+
+def sphere_stress(X,d,r):
+    w = d.copy()
+    w[w!=0] = w[w!=0]**-2
+    diff = haversine_distances(X)
+    ss = np.multiply(w,np.square(r*diff-d))
+    return np.sum(ss)/(2*X.shape[0]**2)
 
 def apsp(G):
     return np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)

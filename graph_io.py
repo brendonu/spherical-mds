@@ -2,6 +2,24 @@ import os
 import numpy as np
 import graph_tool.all as gt
 
+def write_to_json(G,X,fname='webapp/data.js'):
+    json_str = "G = { \n    \'nodes\': [\n"
+
+    for v in G.iter_vertices():
+        json_str += "       {{\'id\': {v_id}, \'pos\': {v_pos}}}".format(v_id=v,v_pos=np.array2string(np.flip(X[v]),separator=','))
+        if v != G.num_vertices()-1:
+            json_str += ",\n"
+    json_str += "\n     ],\n    \'edges\': [\n"
+
+    for i, (e1,e2) in enumerate(G.iter_edges()):
+        json_str += "       {{\'source\': {s_id}, \'target\': {t_id}}}".format(s_id=e1,t_id=e2)
+        if i != G.num_edges()-1:
+            json_str += ",\n"
+    json_str += "\n     ]\n}"
+
+
+    with open(fname, "w") as text_file:
+        text_file.write(json_str)
 
 def load_graph(in_file):
     extension = os.path.splitext(in_file)[1]

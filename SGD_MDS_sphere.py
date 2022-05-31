@@ -24,7 +24,7 @@ def sphere_dist(xi,xj):
 
 
 @jit(nopython=True,cache=True)
-def gradient(p,q):
+def gradient(p,q,r):
     sin, cos = np.sin, np.cos
     rt = lambda x: pow(x,0.5)
 
@@ -39,17 +39,21 @@ def gradient(p,q):
     da = -dx
     db = denom * (sin(b)*cos(y)*cos(a-x) - sin(y)*cos(b))
 
-    return np.array([[dy,dx],
+    return r * np.array([[dy,dx],
                      [db,da]])
+
+
+
 
 @jit(nopython=True,cache=True)
 def solve_stochastic(d,indices,
-                    w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='fixed',init_pos=None,
-                    switch_step=30,steps=None):
+        w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='fixed',init_pos=None,
+        switch_step=30,lr_cap=0.5):
 
-    # from autograd import grad
-    # import autograd.numpy as np
     n = d.shape[0]
+    r = 1
+
+    steps = schedule_convergent(d,30,0.01,num_iter)
 
     #Initialize positions
     if init_pos:
@@ -61,26 +65,15 @@ def solve_stochastic(d,indices,
 
     w = w if w else np.ones( (n,n) )
 
-    #grab learning rate
-    #steps = schedule_convergent(d,switch_step,epsilon,num_iter)
-    #steps = np.ones(num_iter) * 0.001
-    max_change, shuffle,cap = 0, random.shuffle, 0.5
+    max_change, shuffle,cap = 0, random.shuffle, lr_cap
     tol = np.ones( (n,n) ) * 1e-13
 
     shuffle(indices)
 
     sin, cos, asin, acos, sqrt = np.sin, np.cos, np.arcsin, np.arccos, np.sqrt
 
-    # def sphere_stress(X):
-    #
-    #     lat = X[:,0]
-    #     lng = X[:,1]
-    #     diff_lat = lat.reshape((n,1)) - lat
-    #     diff_lng = lng.reshape((n,1)) - lng
-    #     diff = sin(diff_lat/2)**2 + cos(lat.reshape((n,1)))*cos(lat) * sin(diff_lng/2)**2
-    #     Y =  2 * asin(sqrt(np.maximum(diff,tol)))
-    #     residual = (Y-d) ** 2
-    #     return residual.sum() / (n**2)
+    # def geodesic(x1,x2):
+    #     return acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
 
     geodesic = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
 
@@ -102,12 +95,15 @@ def solve_stochastic(d,indices,
             wc = cap if wc > cap else wc
 
             #gradient
-            g = gradient(X[i],X[j]) * 2 * (geodesic(X[i],X[j])-d[i][j])
+            delta = geodesic(X[i],X[j])
+            g = gradient(X[i],X[j],r) * 2 * (r*delta-d[i][j])
             m = wc*g
 
 
             X[i] = X[i] - m[0]
             X[j] = X[j] - m[1]
+            #r = r - wc*  2*delta*(r*delta - d[i][j])
+            #if r <= 0: r = epsilon
 
         shuffle(indices)
         now_error = stress(X)
@@ -121,10 +117,18 @@ def solve_stochastic(d,indices,
     return X
 
 
-
+@jit(nopython=True,cache=True)
 def schedule_convergent(d,t_max,eps,t_maxmax):
-    w = np.divide(np.ones(d.shape),d**2,out=np.zeros_like(d), where=d!=0)
-    w_min,w_max = np.amin(w,initial=10000,where=w > 0), np.max(w)
+    w = d.copy()
+    w_min,w_max = 10000, 0
+    for i in range(w.shape[0]):
+        for j in range(w.shape[0]):
+            if i == j:
+                w[i,j] = 0
+            else:
+                w[i,j] = d[i][j] ** -2
+                w_min = min(w[i,j], w_min)
+                w_max = max(w[i,j],w_max)
 
     eta_max = 1.0 / w_min
     eta_min = eps / w_max
@@ -148,7 +152,90 @@ def schedule_convergent(d,t_max,eps,t_maxmax):
 
     #etas = [eps for t in range(t_maxmax)]
     #print(etas)
-    return np.array(etas)
+    return etas
+
+@jit(nopython=True,cache=True)
+def solve_stochastic_debug(d,indices,
+        w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='fixed',init_pos=None,
+        switch_step=30,lr_cap=0.5):
+
+    n = d.shape[0]
+    r = 1
+    hist = []
+    r_hist = []
+
+    if schedule=='fixed':
+        steps = np.ones(num_iter)*1e-3
+    elif schedule=='convergent':
+        steps = schedule_convergent(d,30,0.01,num_iter)
+    elif schedule=='sqrt':
+        steps = np.zeros(num_iter)
+        for i in range(num_iter):
+            steps[i] = 1/np.sqrt(i+1)
+
+    #Initialize positions
+    if init_pos:
+        X = init_pos
+    else:
+        x1 = np.random.uniform(0, math.pi, (n,1) )
+        x2 = np.random.uniform(0,2*math.pi, (n,1) )
+        X = np.concatenate( (x1,x2), axis=1 )
+
+    w = w if w else np.ones( (n,n) )
+
+    max_change, shuffle,cap = 0, random.shuffle, lr_cap
+    tol = np.ones( (n,n) ) * 1e-13
+
+    shuffle(indices)
+
+    sin, cos, asin, acos, sqrt = np.sin, np.cos, np.arcsin, np.arccos, np.sqrt
+
+    # def geodesic(x1,x2):
+    #     return acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
+
+    geodesic = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
+
+    def stress(X,r):
+        stress = 0
+        for i in range(n):
+            for j in range(i):
+                stress += w[i][j]*pow(r*geodesic(X[i],X[j])-d[i][j],2)
+        return stress / pow(n,2)
+
+
+    error = lambda x1,x2, dij: (geodesic(x1,x2) - dij) **2
+    #haver_grad = grad(error)
+    prev_error, now_error = stress(X,r),0
+
+    for step in steps:
+
+        for i,j in indices:
+            wc =  step / (d[i][j]**2)
+            wc = cap if wc > cap else wc
+
+            #gradient
+            delta = geodesic(X[i],X[j])
+            g = gradient(X[i],X[j],r) * 2 * (r*delta-d[i][j])
+            m = wc*g
+
+
+            X[i] = X[i] - m[0]
+            X[j] = X[j] - m[1]
+            #r = r - wc*  2*delta*(r*delta - d[i][j])
+            #if r <= 0: r = epsilon
+
+        shuffle(indices)
+        now_error = stress(X,r)
+        hist.append(X.copy())
+        r_hist.append(r)
+        if abs(now_error-prev_error)/prev_error < epsilon:
+            break
+        prev_error = now_error
+        if debug:
+            print(stress(X,r))
+
+
+    return hist, r_hist
 
 class SMDS:
     def __init__(self,dissimilarities,init_pos=np.array([]),scale_heuristic=True):
@@ -161,10 +248,12 @@ class SMDS:
 
 
 
-    def solve(self,num_iter=500,epsilon=1e-3,debug=False,schedule='fixed'):
+    def solve(self,num_iter=500,epsilon=1e-3,debug=False,schedule='fixed',cap=0.5):
         steps = schedule_convergent(self.d,30,0.01,num_iter)
+        if debug:
+            return solve_stochastic_debug(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),schedule=schedule, w=None,num_iter=num_iter,debug=debug,lr_cap=cap)
         X = solve_stochastic(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
-                            w=None,num_iter=num_iter,steps=steps,debug=debug)
+                            w=None,num_iter=num_iter,debug=debug,lr_cap=cap)
         self.X = X
         return X
 

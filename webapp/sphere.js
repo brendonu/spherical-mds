@@ -1,3 +1,5 @@
+
+
 function readTextFile(file)
   {
       var rawFile = new XMLHttpRequest();
@@ -191,6 +193,9 @@ var parse_pos = function(strPos){
 function rad2deg(r){
   return r * 180/Math.PI;
 }
+function rad2deg_arr(arr){
+  return [rad2deg( arr[0] ), rad2deg( arr[1] )]
+}
 function deg2rad(d){
   return d * Math.PI/180;
 }
@@ -298,35 +303,39 @@ console.log(G)
 
 //var Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
 
-
 let points = {
   type: "FeatureCollection",
   features: G['nodes'].map((val, i) => {
     return {type:"Feature",
             geometry: {
               type: "Point",
-              coordinates: val['pos'],
+              coordinates: rad2deg_arr(val['pos']),
               label: val['id']
             }
       }
   })
 }
-console.log(points)
 
-myLink = {
-  type: "LineString",
-  coordinates: [nodes[source.id].spherePos,nodes[target.id].spherePos]
+
+index_map = {}
+for (const ind in G.nodes) {
+  index_map[G.nodes[ind].id] = Number(ind)
 }
 
-let edges = G['edges'].map( (val,i) => {type: "LineString",
-                            coordinates: [val['source']  } )
+console.log(index_map)
+
+let edges = G['edges'].map( (val,i) => {
+    return {type: "LineString", coordinates: [ rad2deg_arr( G.nodes[index_map[val.source]].pos ), rad2deg_arr( G.nodes[index_map[val.target]].pos ) ] }
+  } )
+
+console.log(edges)
 
 //Map = makeMap(myGraph);
 
 
 var svg = d3.select("svg");
 
-var projection = d3.geoOrthographic(),
+var projection = d3.geoEqualEarth(),
     path = d3.geoPath().projection(projection);
 
 
@@ -430,18 +439,18 @@ function updatePaths(svg){
     //Remove and redraw text
     d3.selectAll('text').remove()
 
-    svg.append('g')
-        .attr('class', 'labels')
-        .selectAll('path')
-        .data(points.features)
-        .enter()
-        .append('text')
-        .attr('d',labels)
-        .style('text-anchor', 'middle')
-        .attr('transform', function(d) {
-			       return 'translate(' +  path.centroid(d) + ')';
-		       })
-           .text(function(d) {return d.geometry.label; });
+    // svg.append('g')
+    //     .attr('class', 'labels')
+    //     .selectAll('path')
+    //     .data(points.features)
+    //     .enter()
+    //     .append('text')
+    //     .attr('d',labels)
+    //     .style('text-anchor', 'middle')
+    //     .attr('transform', function(d) {
+		// 	       return 'translate(' +  path.centroid(d) + ')';
+		//        })
+    //        .text(function(d) {return d.geometry.label; });
 
 }
 
@@ -471,8 +480,10 @@ function changeProjection(){
 
 
 // gentle animation
-d3.interval(function(elapsed) {
-    projection.rotate([ elapsed / 150, 0 ]);
-    svg.selectAll('path')
-        .attr('d', path);
-}, 50);
+// d3.interval(function(elapsed) {
+//     projection.rotate([ elapsed / 150, 0 ]);
+//     svg.selectAll('path')
+//         .attr('d', path);
+// }, 50);
+
+updateData(points)
