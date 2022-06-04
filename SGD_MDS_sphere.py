@@ -91,7 +91,7 @@ def solve_stochastic(d,indices,
     for step in steps:
 
         for i,j in indices:
-            wc =  step / (d[i][j]**2)
+            wc =  step #/ (d[i][j]**2)
             wc = cap if wc > cap else wc
 
             #gradient
@@ -110,6 +110,7 @@ def solve_stochastic(d,indices,
         if abs(now_error-prev_error) < epsilon:
             break
         prev_error = now_error
+        print(stress(X))
         if debug:
             print(stress(X))
 
@@ -253,7 +254,7 @@ class SMDS:
         if debug:
             return solve_stochastic_debug(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),schedule=schedule, w=None,num_iter=num_iter,debug=debug,lr_cap=cap)
         X = solve_stochastic(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
-                            w=None,num_iter=num_iter,debug=debug,lr_cap=cap)
+                            w=None,num_iter=num_iter,debug=debug,lr_cap=cap,epsilon=epsilon)
         self.X = X
         return X
 

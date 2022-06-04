@@ -2,17 +2,20 @@ import os
 import numpy as np
 import graph_tool.all as gt
 
-def write_to_json(G,X,fname='webapp/data.js'):
+def write_to_json(G,X,fname='webapp/data.js',name_map = None):
+
+    name = lambda v: name_map[v] if name_map else v
+
     json_str = "G = { \n    \'nodes\': [\n"
 
     for v in G.iter_vertices():
-        json_str += "       {{\'id\': {v_id}, \'pos\': {v_pos}}}".format(v_id=v,v_pos=np.array2string(np.flip(X[v]),separator=','))
+        json_str += "       {{\'id\': \'{v_id}\', \'pos\': {v_pos}}}".format(v_id=name(v),v_pos=np.array2string(np.flip(X[v]),separator=','))
         if v != G.num_vertices()-1:
             json_str += ",\n"
     json_str += "\n     ],\n    \'edges\': [\n"
 
     for i, (e1,e2) in enumerate(G.iter_edges()):
-        json_str += "       {{\'source\': {s_id}, \'target\': {t_id}}}".format(s_id=e1,t_id=e2)
+        json_str += "       {{\'source\': \'{s_id}\', \'target\': \'{t_id}\'}}".format(s_id=name(e1),t_id=name(e2))
         if i != G.num_edges()-1:
             json_str += ",\n"
     json_str += "\n     ]\n}"
