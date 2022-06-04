@@ -3,10 +3,12 @@ import graph_tool.all as gt
 import random
 import pickle
 import numpy as np
-from SGD_MDS_sphere import SMDS, all_pairs_shortest_path,output_sphere
+from SGD_MDS_sphere import SMDS
+from SGD_MDS2 import SGD
 from graph_functions import *
 import matplotlib.pyplot as plt
 from recursive_divide import subdivide_graph
+import math
 
 import graph_tool.all as gt
 
@@ -179,24 +181,19 @@ def apsp(G):
 
 sphere_geo = lambda x1,x2: acos( sin(x1[0])*sin(x2[0]) + cos(x1[0])*cos(x2[0])*cos(x1[1]-x2[1]) )
 
-def distortion(X,d,metric=sphere_geo):
-    dist = 0
-    for i in range(len(X)):
-        for j in range(i):
-            dist += abs( metric(X[i],X[j]) - d[i][j]) / d[i][j]
-    return dist/choose(len(X),2)
+
 
 def subdivide():
-    G = gt.load_graph('graphs/dodecahedron.xml')
+    G = gt.load_graph('graphs/cube.xml')
     d = apsp(G)
     print(d.max())
 
-    y = np.linspace(0.3,2,100)
+    y = np.linspace(0.45,2,100)
     data = np.zeros( (len(y), 2) )
     for i,a in enumerate(y):
         print(a)
-        X = SMDS(a*d).solve(500)
-        data[i] = [a, distortion(X,a*d)]
+        X = SGD(a*d,weighted=False).solve()
+        data[i] = [a, distortion(X,a*d, lambda x1,x2: np.linalg.norm(x1-x2))]
     np.savetxt('data/cube_scale.txt',data,delimiter=',')
 
     return d.max()
@@ -209,11 +206,11 @@ def choose(n,k):
         product *= (n-(k-1))/i
     return product
 
-def distortion(X,d):
+def distortion(X,d,metric=sphere_geo):
     dist = 0
     for i in range(len(X)):
         for j in range(i):
-            dist += abs( sphere_dist(X[i],X[j]) - d[i][j]) / d[i][j]
+            dist += abs( metric(X[i],X[j]) - d[i][j]) / d[i][j]
     return dist/choose(len(X),2)
 #save_animation()
 #compare_plot(5)
@@ -260,16 +257,21 @@ X = np.concatenate( (x1,x2), axis=1 )
 #     return residual.sum() / (n**2)
 #
 # print(haversine(X))
+n = 15
 diam = subdivide()
 
 data = np.loadtxt('data/cube_scale.txt',delimiter=',')
 X = data[:,0]
 dist = data[:,1]
 import pylab
-pylab.plot(X,dist)
+pylab.plot(X,dist,label='Euclidean Distortion value')
+#pylab.plot(np.ones(dist.shape[0])*(math.pi/diam),np.linspace(0,1,dist.shape[0]) ,'--',label='Proposed heuristic scale factor')
 pylab.xlabel('scale factor')
 pylab.ylabel('distortion')
-pylab.suptitle("Dodecahedron \n Diameter {}. Expect to see min at pi/{} = {}".format(diam, diam, round(math.pi/diam,5)))
+pylab.legend()
+#pylab.xlim(0,2)
+pylab.ylim(0,0.8)
+pylab.suptitle("Cube".format(diam, diam, round(math.pi/diam,5)))
 pylab.show()
 
-save_animation()
+#save_animation()

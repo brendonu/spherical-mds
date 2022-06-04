@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 #import tensorflow as tf
 from math import sqrt
 import itertools
-from SGD_MDS import myMDS
-
 
 import math
 import random
