@@ -24,22 +24,43 @@ def stress(X,d,metric=euclid_geo):
     stress = 0
     for i in range(len(X)):
         for j in range(i):
-            stress += pow(metric(X[i],X[j])-d[i][j],2) / pow(d[i][j],2)
-    return stress / pow(len(X),2)
+            stress += pow(metric(X[i],X[j])-d[i][j],2)# / pow(d[i][j],2)
+    return stress #/ pow(len(X),2)
+
+
+
+def maybe_stress(X,d):
+    A = X[:,np.newaxis,:]
+    B = X[np.newaxis,:,:]
+    C = A-B
+    diff = np.sum((A-B)**2,axis=2)
+    return np.sum(np.square(diff-d)) / 2
+
+def euclid_drive():
+    G = gt.load_graph_from_csv("txt_graphs/mesh3em5.txt",hashed=True)
+    d = apsp(G)
+
+    X = SGD(d,weighted=False).solve()
+
+    pos = G.new_vp('vector<float>')
+    pos.set_2d_array(X.T)
+
+    gt.graph_draw(G,pos=pos)
 
 def sphere_drive():
-    G = gt.load_graph("graphs/sierpinski3d.dot")
-    #G = gt.load_graph_from_csv("txt_graphs/dwt_221.txt",hashed=False)
+    #G = gt.load_graph("graphs/grid1.dot")
+    G = gt.load_graph_from_csv("exp_graphs/grid1_dual.txt",hashed=False)
     print(G.num_vertices())
 
     import time
 
     start = time.perf_counter()
     d = apsp(G)
-    X = SMDS(d,scale_heuristic=False).solve(epsilon=1e-9)
+    X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9,schedule='convergent')
     end = time.perf_counter()
     print("Took {} seconds".format(end-start))
     print(stress(X,d))
+    print(maybe_stress(X,d))
 
     write_to_json(G,X)
 
@@ -48,59 +69,60 @@ def hyperbolic_drive():
     d = apsp(G)
     X = HMDS(d).solve()
 
-data = np.loadtxt('graphs/mos.txt',delimiter=',',dtype='U100',skiprows=1)
-labels = np.loadtxt('graphs/mos_labels.csv',delimiter=',',dtype='U100',skiprows=1)
-disc_map = {}
-for x in labels:
-    disc_map[int(x[0])] = x[2]
+def map_of_science():
+    data = np.loadtxt('graphs/mos.txt',delimiter=',',dtype='U100',skiprows=1)
+    labels = np.loadtxt('graphs/mos_labels.csv',delimiter=',',dtype='U100',skiprows=1)
+    disc_map = {}
+    for x in labels:
+        disc_map[int(x[0])] = x[2]
 
-print(data)
+    print(data)
 
-E = data[:,:3].astype(np.float64)
-print(E)
-G = gt.Graph(directed=False)
+    E = data[:,:3].astype(np.float64)
+    print(E)
+    G = gt.Graph(directed=False)
 
-weights = G.new_edge_property('float')
+    weights = G.new_edge_property('float')
 
-G.add_edge_list(E,hashed=False,eprops=[weights])
+    G.add_edge_list(E,hashed=False,eprops=[weights])
 
-G.remove_vertex(0)
-for (e1,e2),w in zip(G.iter_edges(),weights):
-    if disc_map[e1+1] == '13' and disc_map[e2+1] == '7':
-        print("{},{}".format(e1,e2))
-#
-d = apsp(G,weights)
+    G.remove_vertex(0)
+    for (e1,e2),w in zip(G.iter_edges(),weights):
+        if disc_map[e1+1] == '13' and disc_map[e2+1] == '7':
+            print("{},{}".format(e1,e2))
+    #
+    d = apsp(G,weights)
 
-X = SGD(d,weighted=False).solve()
-X = labels[:,3:].astype(np.float64)
-L = labels[:,1]
-mine = dict()
-for l in L:
-    if l not in mine:
-        mine[l] = 0
-    else:
-        mine[l] += 1
-        print('hello there')
-X[:,1] *= -1
+    X = SGD(d,weighted=False).solve()
+    X = labels[:,3:].astype(np.float64)
+    L = labels[:,1]
+    mine = dict()
+    for l in L:
+        if l not in mine:
+            mine[l] = 0
+        else:
+            mine[l] += 1
+            print('hello there')
+    X[:,1] *= -1
 
-pos = G.new_vp('vector<float>')
-pos.set_2d_array(X.T)
+    pos = G.new_vp('vector<float>')
+    pos.set_2d_array(X.T)
 
-clr_map = G.new_vp('int')
-halo = G.new_vp('string')
-for v in G.iter_vertices():
-    clr_map[v] = disc_map[v+1]
-    if v == 93 or v == 98:
-        halo[v] = 'red'
-    else:
-        halo[v] = 'black'
+    clr_map = G.new_vp('int')
+    halo = G.new_vp('string')
+    for v in G.iter_vertices():
+        clr_map[v] = disc_map[v+1]
+        if v == 93 or v == 98:
+            halo[v] = 'red'
+        else:
+            halo[v] = 'black'
 
 
 
-gt.graph_draw(G,pos=pos,vertex_fill_color=clr_map,vertex_color=halo,output='mapofscience.png')
+    gt.graph_draw(G,pos=pos,vertex_fill_color=clr_map,vertex_color=halo,output='mapofscience.png')
 
-X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9)
-write_to_json(G,X)
+    X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9)
+    write_to_json(G,X)
 
 def choose(n,k):
     product = 1
@@ -125,7 +147,7 @@ def knn_graph(D,k=2):
         for i in range(k): G.add_edge(v,ind[v,i])
     return G
 
-def drive():
+def cities():
     G = gt.load_graph("graphs/isocahedron.xml")
     G = subdivide_graph_recursive(G,3)
     d = apsp(G)
@@ -244,4 +266,4 @@ def subdivide_save():
 
 
 if __name__ == "__main__":
-    drive()
+    sphere_drive()

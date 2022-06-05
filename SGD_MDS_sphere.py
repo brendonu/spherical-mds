@@ -23,37 +23,48 @@ def sphere_dist(xi,xj):
     return np.arccos(sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(l2-l1))
 
 
-@jit(nopython=True,cache=True)
+@jit(nopython=True,cache=True,fastmath=True,nogil=True)
 def gradient(p,q,r):
     sin, cos = np.sin, np.cos
-    rt = lambda x: pow(x,0.5)
+    rt = np.sqrt
 
     y,x = p
     b,a = q
 
-    denom = 1/rt(1-pow((sin(b)*sin(y) + cos(b)*cos(y)*cos(a-x)),2))
+    grad = np.ones( (2,2) )
 
-    dx = -denom * (sin(a-x)*cos(b)*cos(y))
-    dy = denom * (-sin(b)*cos(y) + sin(y)*cos(b)*cos(a-x))
+    denom = rt(1-pow((sin(b)*sin(y) + cos(b)*cos(y)*cos(a-x)),2))
 
-    da = -dx
-    db = denom * (sin(b)*cos(y)*cos(a-x) - sin(y)*cos(b))
+    grad[0,1] = -(sin(a-x)*cos(b)*cos(y)) / denom
+    grad[0,0] = (-sin(b)*cos(y) + sin(y)*cos(b)*cos(a-x)) / denom
 
-    return r * np.array([[dy,dx],
-                     [db,da]])
-
+    grad[1,1] = -grad[0,1]
+    grad[1,0] = (sin(b)*cos(y)*cos(a-x) - sin(y)*cos(b)) / denom
 
 
+    return r * grad
 
 @jit(nopython=True,cache=True)
+def sched(schedule,d,num_iter,switch,lr):
+    if schedule == 'fixed':
+        return lr * np.ones(num_iter)
+    elif schedule == 'convergent':
+        return schedule_convergent(d,switch,0.01,num_iter)
+    elif schedule == 'geometric':
+        return np.array( [1/(count+1) for count in range(num_iter)] )
+    elif schedule == 'sqrt':
+        return np.array( [1/np.sqrt(count+1) for count in range(num_iter)] )
+
+
+@jit(nopython=True,cache=True,fastmath=True,nogil=True)
 def solve_stochastic(d,indices,
-        w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='fixed',init_pos=None,
+        w=None,num_iter=100, epsilon=1e-5,debug=False,schedule='convergent',init_pos=None,
         switch_step=30,lr_cap=0.5):
 
     n = d.shape[0]
-    r = 1
+    r = 1.0
 
-    steps = schedule_convergent(d,30,0.01,num_iter)
+    steps = sched(schedule,d,num_iter,switch_step,lr_cap/10)
 
     #Initialize positions
     if init_pos:
@@ -165,14 +176,8 @@ def solve_stochastic_debug(d,indices,
     hist = []
     r_hist = []
 
-    if schedule=='fixed':
-        steps = np.ones(num_iter)*1e-3
-    elif schedule=='convergent':
-        steps = schedule_convergent(d,30,0.01,num_iter)
-    elif schedule=='sqrt':
-        steps = np.zeros(num_iter)
-        for i in range(num_iter):
-            steps[i] = 1/np.sqrt(i+1)
+    steps = sched(schedule,d,num_iter,switch_step,lr_cap/10)
+
 
     #Initialize positions
     if init_pos:
@@ -211,7 +216,7 @@ def solve_stochastic_debug(d,indices,
     for step in steps:
 
         for i,j in indices:
-            wc =  step / (d[i][j]**2)
+            wc =  step #/ (d[i][j]**2)
             wc = cap if wc > cap else wc
 
             #gradient
@@ -229,11 +234,11 @@ def solve_stochastic_debug(d,indices,
         now_error = stress(X,r)
         hist.append(X.copy())
         r_hist.append(r)
-        if abs(now_error-prev_error)/prev_error < epsilon:
-            break
+        # if abs(now_error-prev_error)/prev_error < epsilon:
+        #     break
         prev_error = now_error
-        if debug:
-            print(stress(X,r))
+        # if debug:
+        #     print(now_error)
 
 
     return hist, r_hist
@@ -249,12 +254,13 @@ class SMDS:
 
 
 
-    def solve(self,num_iter=500,epsilon=1e-3,debug=False,schedule='fixed',cap=0.5):
+    def solve(self,num_iter=500,epsilon=1e-3,debug=False,schedule='convergent',cap=0.5):
         steps = schedule_convergent(self.d,30,0.01,num_iter)
         if debug:
-            return solve_stochastic_debug(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),schedule=schedule, w=None,num_iter=num_iter,debug=debug,lr_cap=cap)
+            return solve_stochastic_debug(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
+                                w=None,num_iter=num_iter,debug=debug,lr_cap=cap,epsilon=epsilon,schedule=schedule)
         X = solve_stochastic(self.d,np.array( list(itertools.combinations(range(self.n) , 2) )),
-                            w=None,num_iter=num_iter,debug=debug,lr_cap=cap,epsilon=epsilon)
+                            w=None,num_iter=num_iter,debug=debug,lr_cap=cap,epsilon=epsilon,schedule=schedule)
         self.X = X
         return X
 

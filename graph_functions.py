@@ -1,16 +1,26 @@
 import graph_tool.all as gt
 import numpy as np
 from sklearn.metrics.pairwise import haversine_distances
+from numba import jit
+import math
 
 def sphere_stress(X,d,r):
     w = d.copy()
     w[w!=0] = w[w!=0]**-2
     diff = haversine_distances(X)
     ss = np.multiply(w,np.square(r*diff-d))
-    return np.sum(ss)/(2*X.shape[0]**2)
+    return np.sum(ss)/2
+
+def distortion(X,d,metric=lambda x1,x2: np.linalg.norm(x1-x2)):
+    dist = 0
+    for i in range(X.shape[0]):
+        for j in range(i):
+            dist += abs( metric(X[i],X[j])-d[i,j] ) / d[i,j]
+    return dist/math.comb(X.shape[0],2)
 
 def apsp(G):
-    return np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)
+    d = np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)
+    return d
 
 #From tsNET implementation
 
