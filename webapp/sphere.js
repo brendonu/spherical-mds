@@ -90,7 +90,8 @@ let points = {
             geometry: {
               type: "Point",
               coordinates: rad2deg_arr(val['pos']),
-              label: val['id']
+              label: val['id'],
+              'class': val.class
             }
       }
   })
@@ -116,7 +117,7 @@ window.addEventListener('load',function(){
   var svg = d3.select("svg");
 
   var projection = d3.geoOrthographic(),
-      path = d3.geoPath().projection(projection).pointRadius(d => 1)
+      path = d3.geoPath().projection(projection)//.pointRadius(d => 1)
       console.log(path)
         //.attr('transform', 0);
   state.projection = projection
@@ -134,6 +135,8 @@ window.addEventListener('load',function(){
    state.phi = d3.scaleLinear()
      .domain([-height, height])
      .range([90, -90]);
+
+  state.clr_map = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"]
 
   let s_height = document.querySelector('#div1').offsetHeight /2
   let s_width = document.querySelector('#div1').offsetWidth /2
@@ -183,7 +186,11 @@ function updateData(){
       .data(points.features)
       .join(
         enter => enter.append('path')
-        .attr('d', path),
+        .attr('d', path)
+        .attr('fill', d => {
+          console.log(d)
+          return d.geometry.class ? state.clr_map[d.geometry.class] : null
+        }),
 
         update => update.transition(t)
           .attr('d',path)
@@ -200,7 +207,7 @@ function updateData(){
       .append('text')
       .text(d => d.label)
       //.attr('d',d => d.label)
-      .attr('font-size', 14)
+      .attr('font-size', 7)
       .style('text-anchor', 'middle')
       .attr('transform', function(d) {
            return 'translate(' +  path.centroid(d) + ')';
@@ -238,20 +245,20 @@ function updatePaths(){
     //Remove and redraw text
     d3.selectAll('text').remove()
 
-    // svg.append('g')
-    //     .attr('class', 'labels')
-    //     .selectAll('path')
-    //     .data(points.features)
-    //     .enter()
-    //     .append('text')
-    //     .text(d => d.label)
-    //     //.attr('d',d => d.label)
-    //     .attr('font-size', 14)
-    //     .style('text-anchor', 'middle')
-    //     .attr('transform', function(d) {
-    //          return 'translate(' +  path.centroid(d) + ')';
-    //        })
-    //        .text(function(d) {return d.geometry.label; });
+    svg.append('g')
+        .attr('class', 'labels')
+        .selectAll('path')
+        .data(points.features)
+        .enter()
+        .append('text')
+        .text(d => d.label)
+        //.attr('d',d => d.label)
+        .attr('font-size', 14)
+        .style('text-anchor', 'middle')
+        .attr('transform', function(d) {
+             return 'translate(' +  path.centroid(d) + ')';
+           })
+           .text(function(d) {return d.geometry.label; });
 
 }
 
@@ -269,7 +276,7 @@ function changeProjection(){
 
     case "equalearth":
       state.projection = d3.geoEqualEarth(),
-          state.path = d3.geoPath().projection(state.projection).pointRadius(d => 1);
+          state.path = d3.geoPath().projection(state.projection)//.pointRadius(d => 1);
       break;
 
     default:

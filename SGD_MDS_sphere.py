@@ -176,7 +176,7 @@ def solve_stochastic_debug(d,indices,
     hist = []
     r_hist = []
 
-    steps = sched(schedule,d,num_iter,switch_step,lr_cap/10)
+    steps = sched(schedule,d,num_iter,switch_step,0.05)
 
 
     #Initialize positions

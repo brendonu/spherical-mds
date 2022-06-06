@@ -2,14 +2,17 @@ import os
 import numpy as np
 import graph_tool.all as gt
 
-def write_to_json(G,X,fname='webapp/data.js',name_map = None):
+def write_to_json(G,X,fname='webapp/data.js',name_map = None,classes = None):
 
     name = lambda v: name_map[v] if name_map else v
 
     json_str = "G = { \n    \'nodes\': [\n"
 
     for v in G.iter_vertices():
-        json_str += "       {{\'id\': \'{v_id}\', \'pos\': {v_pos}}}".format(v_id=name(v),v_pos=np.array2string(np.flip(X[v]),separator=','))
+        if classes:
+            json_str += "       {{\'id\': \'{v_id}\', \'pos\': {v_pos}, \'class\': {c}}}".format(c= classes[v],v_id=name(v),v_pos=np.array2string(np.flip(X[v]),separator=','))
+        else:
+            json_str += "       {{\'id\': \'{v_id}\', \'pos\': {v_pos}}}".format(v_id=name(v),v_pos=np.array2string(np.flip(X[v]),separator=','))
         if v != G.num_vertices()-1:
             json_str += ",\n"
     json_str += "\n     ],\n    \'edges\': [\n"
@@ -23,6 +26,7 @@ def write_to_json(G,X,fname='webapp/data.js',name_map = None):
 
     with open(fname, "w") as text_file:
         text_file.write(json_str)
+    text_file.close()
 
 def load_graph(in_file):
     extension = os.path.splitext(in_file)[1]
