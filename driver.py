@@ -37,10 +37,11 @@ def maybe_stress(X,d):
     return np.sum(np.square(diff-d)) / 2
 
 def euclid_drive():
-    G = gt.load_graph_from_csv("txt_graphs/mesh3em5.txt",hashed=True)
+    G = gt.load_graph_from_csv("exp_graphs/cube_4.txt",hashed=True)
     d = apsp(G)
 
     X = SGD(d,weighted=False).solve()
+    print(distortion(X,d))
 
     pos = G.new_vp('vector<float>')
     pos.set_2d_array(X.T)
@@ -153,37 +154,41 @@ def cities():
     d = apsp(G)
     #G = gt.load_graph_from_csv("txt_graphs/dwt_221.txt",hashed=False)
 
-    # D = np.loadtxt('City_Distance dataset.csv',delimiter=',', dtype='U100')
-    # labels = D[1:,0]
-    # print(labels)
-    # D = np.loadtxt('worldcities.csv', delimiter=',', dtype='U100',skiprows=1)
-    # cities = D[:,1]
-    # Y = np.zeros( (len(labels),2) )
-    #
-    # for i,city in enumerate(labels):
-    #     ind = np.where( cities == city )
-    #     if len(ind[0]) <= 1:
-    #         Y[i] = D[ind[0],2:4]
-    #     else: Y[i] = D[ind[0][0], 2:4]
-    # Y = np.radians(Y)
-    #
-    # d = haversine_distances(Y)
-    #
-    # # D = D[:,1:]
-    # # D = D[1:,:]
-    # # print(D)
-    # # D[D == ''] = 0
-    # # D = D.astype(np.float64)
-    # # d = D + D.T
-    # # print(D)
-    # # G = knn_graph(D,k=4)
-    #
-    # #d *= (math.pi/3900)
-    #
-    # import time
-    #
-    # start = time.perf_counter()
-    # d = apsp(G)
+    D = np.loadtxt('City_Distance dataset.csv',delimiter=',', dtype='U100')
+    labels = D[1:,0]
+    print(labels)
+    D = np.loadtxt('worldcities.csv', delimiter=',', dtype='U100',skiprows=1)
+    cities = D[:,1]
+    Y = np.zeros( (len(labels),2) )
+
+    for i,city in enumerate(labels):
+        ind = np.where( cities == city )
+        if len(ind[0]) <= 1:
+            Y[i] = D[ind[0],2:4]
+        else: Y[i] = D[ind[0][0], 2:4]
+    Y = np.radians(Y)
+
+    d = haversine_distances(Y)
+    print(d)
+    G = knn_graph(d,5)
+
+    weights = G.new_edge_property('float')
+    for i, (e1,e2) in enumerate(G.iter_edges()):
+        weights[i] = 1.
+
+    d = apsp(G,weights)
+
+    # D = D[:,1:]
+    # D = D[1:,:]
+    # print(D)
+    # D[D == ''] = 0
+    # D = D.astype(np.float64)
+    # d = D + D.T
+    # print(D)
+    # G = knn_graph(D,k=4)
+
+    #d *= (math.pi/3900)
+
 
 
     X = SMDS(d).solve(epsilon=1e-15)
@@ -193,10 +198,10 @@ def cities():
 
     # G = gt.Graph(directed=False)
     # G.add_vertex(n=labels.shape[0])
-    # names = G.new_vertex_property('string')
-    #for v in G.iter_vertices(): names[v] = labels[v]
+    names = G.new_vertex_property('string')
+    for v in G.iter_vertices(): names[v] = labels[v]
 
-    write_to_json(G,X,name_map=None)
+    write_to_json(G,X,name_map=names)
 
 def all_graphs():
     import os
@@ -228,16 +233,17 @@ def all_graphs():
 
 
 def subdivide():
-    graphs = [gt.load_graph("graphs/cube.xml"), gt.load_graph("graphs/dodecahedron.xml"), gt.load_graph("graphs/isocahedron.xml")]
+    graphs = ["graphs/cube.xml", "graphs/dodecahedron.xml", "graphs/isocahedron.xml"]
 
     names = ['cube', 'dodecahedron', 'isocahedron']
     depth = 7
 
-    for i,G in enumerate(graphs):
+    for i,g in enumerate(graphs):
         data = np.zeros( (depth, 3) )
         for lvl in range(depth):
             print(lvl)
-            H = subdivide_graph_recursive(G,lvl+1)
+            G = gt.load_graph(g)
+            H = subdivide_graph_recursive(G,lvl)
             d = apsp(H)
 
             X_E = SGD(d).solve()
@@ -248,14 +254,15 @@ def subdivide():
         np.savetxt('data/{}_polytopes.txt'.format(names[i]),data,delimiter=',')
 
 def subdivide_save():
-    graphs = [gt.load_graph("graphs/cube.xml"), gt.load_graph("graphs/dodecahedron.xml"), gt.load_graph("graphs/isocahedron.xml")]
+    graphs = ["graphs/cube.xml", "graphs/dodecahedron.xml", "graphs/isocahedron.xml"]
 
     names = ['cube', 'dodecahedron', 'isocahedron']
     depth = 7
 
-    for i,G in enumerate(graphs):
+    for i,g in enumerate(graphs):
         for lvl in range(depth):
             print(lvl)
+            G = gt.load_graph(g)
             H = subdivide_graph_recursive(G,lvl)
             d = apsp(H)
 
@@ -266,4 +273,4 @@ def subdivide_save():
 
 
 if __name__ == "__main__":
-    sphere_drive()
+    cities()

@@ -9,7 +9,7 @@ def sphere_stress(X,d,r):
     w[w!=0] = w[w!=0]**-2
     diff = haversine_distances(X)
     ss = np.multiply(w,np.square(r*diff-d))
-    return np.sum(ss)/2
+    return np.sum(ss)/ (2*X.shape[0]**2)
 
 def distortion(X,d,metric=lambda x1,x2: np.linalg.norm(x1-x2)):
     dist = 0
@@ -18,9 +18,15 @@ def distortion(X,d,metric=lambda x1,x2: np.linalg.norm(x1-x2)):
             dist += abs( metric(X[i],X[j])-d[i,j] ) / d[i,j]
     return dist/math.comb(X.shape[0],2)
 
-def apsp(G):
-    d = np.array( [v for v in gt.shortest_distance(G)] ,dtype=float)
+def apsp(G,weights=None):
+    d = np.array( [v for v in gt.shortest_distance(G,weights=weights)] ,dtype=float)
     return d
+
+def get_edge_list(G):
+    E = np.zeros( (G.num_edges(), 2) )
+    for i,(u,v) in enumerate(G.iter_edges()):
+        E[i] = [u,v]
+    return E
 
 #From tsNET implementation
 
