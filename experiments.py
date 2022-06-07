@@ -37,7 +37,7 @@ def stress_curve():
     #print(rs)
 
     pylab.xlabel("Iteration")
-    pylab.ylabel("Distortion")
+    pylab.ylabel("Stress")
     pylab.suptitle("Average stress over benchmark graphs")
     pylab.legend()
     pylab.savefig('figs/upperbound_full.png')
@@ -186,4 +186,4 @@ def scale_curve(n=5):
 
 
 if __name__ == "__main__":
-    print(exp_graphs())
+    stress_curve()

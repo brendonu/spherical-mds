@@ -71,58 +71,26 @@ def hyperbolic_drive():
     X = HMDS(d).solve()
 
 def map_of_science():
-    data = np.loadtxt('graphs/mos.txt',delimiter=',',dtype='U100',skiprows=1)
-    labels = np.loadtxt('graphs/mos_labels.csv',delimiter=',',dtype='U100',skiprows=1)
-    disc_map = {}
-    for x in labels:
-        disc_map[int(x[0])] = x[2]
+    data = np.loadtxt('mos.txt',delimiter=' ',dtype='U100',skiprows=0)
+    labels = np.loadtxt('mos_labels.csv',delimiter=',',dtype='U100',skiprows=1)
 
-    print(data)
-
-    E = data[:,:3].astype(np.float64)
-    print(E)
+    E = data[:,:2].astype(np.int64)
     G = gt.Graph(directed=False)
-
+    G.add_edge_list(E,hashed=True)
+    w = data[:,2]
     weights = G.new_edge_property('float')
+    print(w)
+    for i,e in enumerate(G.edges()):
+        print(float(w[i]))
+        weights[e] = float(w[i])
 
-    G.add_edge_list(E,hashed=False,eprops=[weights])
-
-    G.remove_vertex(0)
-    for (e1,e2),w in zip(G.iter_edges(),weights):
-        if disc_map[e1+1] == '13' and disc_map[e2+1] == '7':
-            print("{},{}".format(e1,e2))
-    #
     d = apsp(G,weights)
-
-    X = SGD(d,weighted=False).solve()
-    X = labels[:,3:].astype(np.float64)
-    L = labels[:,1]
-    mine = dict()
-    for l in L:
-        if l not in mine:
-            mine[l] = 0
-        else:
-            mine[l] += 1
-            print('hello there')
-    X[:,1] *= -1
-
-    pos = G.new_vp('vector<float>')
-    pos.set_2d_array(X.T)
-
-    clr_map = G.new_vp('int')
-    halo = G.new_vp('string')
-    for v in G.iter_vertices():
-        clr_map[v] = disc_map[v+1]
-        if v == 93 or v == 98:
-            halo[v] = 'red'
-        else:
-            halo[v] = 'black'
+    print(d)
 
 
 
-    gt.graph_draw(G,pos=pos,vertex_fill_color=clr_map,vertex_color=halo,output='mapofscience.png')
+    X = SMDS(d).solve(epsilon=1e-9)
 
-    X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9)
     write_to_json(G,X)
 
 def choose(n,k):
@@ -273,4 +241,4 @@ def subdivide_save():
 
 
 if __name__ == "__main__":
-    cities()
+    map_of_science()
