@@ -245,20 +245,20 @@ function updatePaths(){
     //Remove and redraw text
     d3.selectAll('text').remove()
 
-    svg.append('g')
-        .attr('class', 'labels')
-        .selectAll('path')
-        .data(points.features)
-        .enter()
-        .append('text')
-        .text(d => d.label)
-        //.attr('d',d => d.label)
-        .attr('font-size', 14)
-        .style('text-anchor', 'middle')
-        .attr('transform', function(d) {
-             return 'translate(' +  path.centroid(d) + ')';
-           })
-           .text(function(d) {return d.geometry.label; });
+    // svg.append('g')
+    //     .attr('class', 'labels')
+    //     .selectAll('path')
+    //     .data(points.features)
+    //     .enter()
+    //     .append('text')
+    //     .text(d => d.label)
+    //     //.attr('d',d => d.label)
+    //     .attr('font-size', 14)
+    //     .style('text-anchor', 'middle')
+    //     .attr('transform', function(d) {
+    //          return 'translate(' +  path.centroid(d) + ')';
+    //        })
+    //        .text(function(d) {return d.geometry.label; });
 
 }
 
