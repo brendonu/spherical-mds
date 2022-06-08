@@ -108,6 +108,27 @@ def spherical_compare(n=5):
             data[i,j] = distortion(X,d,sphere_geo)
     np.savetxt('data/spherical_distortions.txt',data,delimiter=',')
 
+def hyperbolic_compare(n=5):
+    paths, graphs = exp_graphs()
+
+    data = np.zeros( (len(paths),n) )
+
+    for i ,(path,graph) in enumerate(zip(paths,graphs)):
+        print()
+        print(i)
+        print()
+        for j in range(n):
+            print(j)
+            G = gt.load_graph_from_csv(path,hashed=False)
+            d = apsp(G)
+
+            X = HMDS(d).solve()
+            #write_to_json(G,X,fname='webapp/exp_drawings/{}.js'.format(graph))
+
+            data[i,j] = distortion(X,d,hyper_geo)
+            print(data[i,j])
+        np.savetxt('data/hyperbolic_distortions1.txt',data,delimiter=',')
+
 
 def exp_graphs():
 
@@ -186,4 +207,4 @@ def scale_curve(n=5):
 
 
 if __name__ == "__main__":
-    stress_curve()
+    hyperbolic_compare()
