@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import graph_tool.all as gt
-from graph_functions import apsp, sphere_stress
+from graph_functions import apsp, sphere_stress,distortion
 from graph_io import write_to_json
 from SGD_MDS_sphere import SMDS
 from SGD_hyperbolic import HMDS
@@ -37,30 +37,32 @@ def maybe_stress(X,d):
     return np.sum(np.square(diff-d)) / 2
 
 def euclid_drive():
-    G = gt.load_graph_from_csv("exp_graphs/cube_4.txt",hashed=True)
+    G = gt.load_graph("myroslav_graphs/grid.dot")
     d = apsp(G)
 
     X = SGD(d,weighted=False).solve()
-    print(distortion(X,d))
 
     pos = G.new_vp('vector<float>')
     pos.set_2d_array(X.T)
 
-    gt.graph_draw(G,pos=pos)
+    gt.graph_draw(G,pos=pos,output='grid_mds.png')
 
 def sphere_drive():
     #G = gt.load_graph("graphs/grid1.dot")
-    G = gt.load_graph_from_csv("exp_graphs/grid1_dual.txt",hashed=False)
+    G = gt.load_graph_from_csv("exp_graphs/block_2000.txt",hashed=False)
     print(G.num_vertices())
 
     import time
+    d = apsp(G)
+
+    # SMDS(d).solve(num_iter=20)
+
 
     start = time.perf_counter()
-    d = apsp(G)
-    X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9,schedule='convergent')
+    X = SMDS(d,scale_heuristic=True).solve(num_iter=20,epsilon=1e-7,schedule='convergent')
     end = time.perf_counter()
     print("Took {} seconds".format(end-start))
-    print(stress(X,d))
+    print(distortion(X,d,sphere_geo))
     print(maybe_stress(X,d))
 
     write_to_json(G,X)
@@ -71,40 +73,73 @@ def hyperbolic_drive():
     X = HMDS(d).solve()
 
 def map_of_science():
-    data = np.loadtxt('mos.txt',delimiter=' ',dtype='U100',skiprows=0)
+
+    data = np.loadtxt('mos.txt',delimiter=' ',dtype='U100',skiprows=1)
     labels = np.loadtxt('mos_labels.csv',delimiter=',',dtype='U100',skiprows=1)
+    disc_map = {}
+    for x in labels:
+        disc_map[int(x[0])] = int(x[2])
 
-    E = data[:,:2].astype(np.int64)
+    print(data)
+
+    E = data[:,:3].astype(np.float64)
+    print(E)
     G = gt.Graph(directed=False)
-    G.add_edge_list(E,hashed=True)
-    w = data[:,2]
+
     weights = G.new_edge_property('float')
-    print(w)
-    for i,e in enumerate(G.edges()):
-        print(float(w[i]))
-        weights[e] = float(w[i])
 
+    G.add_edge_list(E,hashed=False,eprops=[weights])
+
+    G.remove_vertex(0)
+    # for (e1,e2),w in zip(G.iter_edges(),weights):
+    #     if disc_map[e1+1] == '13' and disc_map[e2+1] == '7':
+    #         print("{},{}".format(e1,e2))
+    #
     d = apsp(G,weights)
-    print(d)
+
+    #X = SGD(d,weighted=False).solve()
+    X = labels[:,3:].astype(np.float64)
+    L = labels[:,1]
+    mine = dict()
+    for l in L:
+        if l not in mine:
+            mine[l] = 0
+        else:
+            mine[l] += 1
+            print('hello there')
+    X[:,1] *= -1
+
+    pos = G.new_vp('vector<float>')
+    pos.set_2d_array(X.T)
+
+    clrs = ["#179d17","#68dca4","#f21011","#7eefda","#0302f3",
+  "#b87676","#ea86e8","#f8b22d","#e9e889","#b53e3e", "#a316fb", "#e6855b", "#e9ea1f"]
+    import matplotlib.colors
+
+
+    clr_map = G.new_vp("vector<float>")
+    halo = G.new_vp('string')
+    classes = list()
+    for v in G.iter_vertices():
+        clr_map[v] = matplotlib.colors.to_rgb(clrs[disc_map[v+1]-1].upper())
+        classes.append(disc_map[v+1])
+        if v == 93 or v == 98:
+            halo[v] = 'red'
+        else:
+            halo[v] = 'black'
 
 
 
-    X = SMDS(d).solve(epsilon=1e-9)
+    gt.graph_draw(G,pos=pos,vertex_fill_color=clr_map,vertex_color=halo)
 
-    write_to_json(G,X)
+    X = SMDS(d,scale_heuristic=True).solve(epsilon=1e-9)
+    write_to_json(G,X,classes=classes)
 
 def choose(n,k):
     product = 1
     for i in range(1,k+1):
         product *= (n-(k-1))/i
     return product
-
-def distortion(X,d,metric=euclid_geo):
-    stress = 0
-    for i in range(len(X)):
-        for j in range(i):
-            stress += abs(metric(X[i],X[j])-d[i][j]) / d[i][j]
-    return stress / choose(X.shape[0],2)
 
 def knn_graph(D,k=2):
     G = gt.Graph(directed=False)
@@ -117,9 +152,9 @@ def knn_graph(D,k=2):
     return G
 
 def cities():
-    G = gt.load_graph("graphs/isocahedron.xml")
-    G = subdivide_graph_recursive(G,3)
-    d = apsp(G)
+    # G = gt.load_graph("graphs/isocahedron.xml")
+    # G = subdivide_graph_recursive(G,3)
+    # d = apsp(G)
     #G = gt.load_graph_from_csv("txt_graphs/dwt_221.txt",hashed=False)
 
     D = np.loadtxt('City_Distance dataset.csv',delimiter=',', dtype='U100')
@@ -137,14 +172,6 @@ def cities():
     Y = np.radians(Y)
 
     d = haversine_distances(Y)
-    print(d)
-    G = knn_graph(d,5)
-
-    weights = G.new_edge_property('float')
-    for i, (e1,e2) in enumerate(G.iter_edges()):
-        weights[i] = 1.
-
-    d = apsp(G,weights)
 
     # D = D[:,1:]
     # D = D[1:,:]
@@ -164,8 +191,8 @@ def cities():
     #print("Took {} seconds".format(end-start))
     print(stress(X,d))
 
-    # G = gt.Graph(directed=False)
-    # G.add_vertex(n=labels.shape[0])
+    G = gt.Graph(directed=False)
+    G.add_vertex(n=labels.shape[0])
     names = G.new_vertex_property('string')
     for v in G.iter_vertices(): names[v] = labels[v]
 
@@ -201,17 +228,16 @@ def all_graphs():
 
 
 def subdivide():
-    graphs = ["graphs/cube.xml", "graphs/dodecahedron.xml", "graphs/isocahedron.xml"]
+    graphs = [gt.load_graph("graphs/cube.xml"), gt.load_graph("graphs/dodecahedron.xml"), gt.load_graph("graphs/isocahedron.xml")]
 
     names = ['cube', 'dodecahedron', 'isocahedron']
     depth = 7
 
-    for i,g in enumerate(graphs):
+    for i,G in enumerate(graphs):
         data = np.zeros( (depth, 3) )
         for lvl in range(depth):
             print(lvl)
-            G = gt.load_graph(g)
-            H = subdivide_graph_recursive(G,lvl)
+            H = subdivide_graph_recursive(G,lvl+1)
             d = apsp(H)
 
             X_E = SGD(d).solve()
@@ -222,15 +248,14 @@ def subdivide():
         np.savetxt('data/{}_polytopes.txt'.format(names[i]),data,delimiter=',')
 
 def subdivide_save():
-    graphs = ["graphs/cube.xml", "graphs/dodecahedron.xml", "graphs/isocahedron.xml"]
+    graphs = [gt.load_graph("graphs/cube.xml"), gt.load_graph("graphs/dodecahedron.xml"), gt.load_graph("graphs/isocahedron.xml")]
 
     names = ['cube', 'dodecahedron', 'isocahedron']
     depth = 7
 
-    for i,g in enumerate(graphs):
+    for i,G in enumerate(graphs):
         for lvl in range(depth):
             print(lvl)
-            G = gt.load_graph(g)
             H = subdivide_graph_recursive(G,lvl)
             d = apsp(H)
 
@@ -241,4 +266,4 @@ def subdivide_save():
 
 
 if __name__ == "__main__":
-    map_of_science()
+    sphere_drive()

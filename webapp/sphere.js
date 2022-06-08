@@ -4,7 +4,10 @@ let state = {
   'phi': null,
   'projection': null,
   'lines': null,
-  't': null
+  't': null,
+  'pitch': 0,
+  'transformx': 0,
+  'transformy': 0
 }
 
 
@@ -117,11 +120,13 @@ window.addEventListener('load',function(){
   var svg = d3.select("svg");
 
   var projection = d3.geoOrthographic(),
-      path = d3.geoPath().projection(projection)//.pointRadius(d => 1)
+      path = d3.geoPath().projection(projection)
+      //.pointRadius(d => 1)
       console.log(path)
         //.attr('transform', 0);
   state.projection = projection
   state.path = path
+  state.projection.rotate([0, 0,90])
 
 
   // zoom AND rotate
@@ -136,7 +141,7 @@ window.addEventListener('load',function(){
      .domain([-height, height])
      .range([90, -90]);
 
-  state.clr_map = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"]
+  state.clr_map = ["#179d17","#68dca4","#f21011","#7eefda","#0302f3","#b87676","#ea86e8","#f8b22d","#e9e889","#b53e3e", "#a316fb", "#e6855b", "#e9ea1f"]
 
   let s_height = document.querySelector('#div1').offsetHeight /2
   let s_width = document.querySelector('#div1').offsetWidth /2
@@ -153,6 +158,12 @@ window.addEventListener('load',function(){
 
   updateData()
 })
+
+let sliderchange = function(){
+  state.pitch = document.getElementById("pitch").value;
+  state.projection.rotate([state.transformx,state.transformy,state.pitch])
+  updatePaths()
+}
 
 
 function updateData(){
@@ -224,13 +235,12 @@ function updateData(){
     };
     var k = Math.sqrt(100 / state.projection.scale());
     if (d3.event.sourceEvent.wheelDelta) {
-      state.projection.scale(scale * transform.k)
-      transform.x = lastX;
-      transform.y = lastY;
+      state.projection.scale(10 * transform.k)
+
     } else {
-      state.projection.rotate([origin.x + r.x, origin.y + r.y]);
-      lastX = transform.x;
-      lastY = transform.y;
+      state.projection.rotate([origin.x + r.x, origin.y + r.y, state.pitch]);
+      state.transformx = transform.x;
+      state.transformy = transform.y;
     }
     updatePaths();
   }
@@ -253,7 +263,7 @@ function updatePaths(){
     //     .append('text')
     //     .text(d => d.label)
     //     //.attr('d',d => d.label)
-    //     .attr('font-size', 14)
+    //     .attr('font-size', 10)
     //     .style('text-anchor', 'middle')
     //     .attr('transform', function(d) {
     //          return 'translate(' +  path.centroid(d) + ')';

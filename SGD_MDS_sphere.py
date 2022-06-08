@@ -117,11 +117,11 @@ def solve_stochastic(d,indices,
             #if r <= 0: r = epsilon
 
         shuffle(indices)
-        now_error = stress(X)
-        if abs(now_error-prev_error) < epsilon:
-            break
-        prev_error = now_error
-        print(stress(X))
+        # now_error = stress(X)
+        # if abs(now_error-prev_error) < epsilon:
+        #     break
+        # prev_error = now_error
+        # print(stress(X))
         if debug:
             print(stress(X))
 

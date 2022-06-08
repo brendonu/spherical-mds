@@ -2274,3 +2274,11 @@
 553 98 0.188 c Gray40
 554 55 0.272 c BrickRed
 554 190 0.182 c Gray40
+99 94 0.2 c Grey
+99 522 0.2 c Grey
+123 57 0.2 c Grey
+276 403 0.2 c Grey
+164 403 0.2 c Grey
+411 43 0.22 c Grey
+375 411 0.22 c Grey
+94 535 0.2 c Grey

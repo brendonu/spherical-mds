@@ -127,7 +127,7 @@ def hyperbolic_compare(n=5):
 
             data[i,j] = distortion(X,d,hyper_geo)
             print(data[i,j])
-        np.savetxt('data/hyperbolic_distortions1.txt',data,delimiter=',')
+        np.savetxt('data/hyperbolic_distortions2.txt',data,delimiter=',')
 
 
 def exp_graphs():
