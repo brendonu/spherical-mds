@@ -43,7 +43,7 @@ def grad(u,v):
     return grad
 
 @jit(nopython=True)
-def satisfy(u,v,d,w,step):
+def satisfy(u,v,d,w,step,r):
     """
     u,v: hyperbolic vectors
     d: ideal distance between u and v from shortest path matrix
@@ -57,10 +57,15 @@ def satisfy(u,v,d,w,step):
     wc = step / d**2
     wc = 0.1 if wc > 0.1 else wc
 
-    g = 2*(geodesic(u,v)-d) * grad(u,v)
+    delta = geodesic(u,v)
+    g = 2*(r*delta-d) * r*grad(u,v)
     m = wc*g
 
-    return u-m[0], v-m[1]
+    r = r - wc*  2*delta*(r*delta - d)
+    if r <= 0: r = 1e-7
+    if r > 2: r = 2
+
+    return u-m[0], v-m[1],r
 
 @jit(nopython=True)
 def step_func1(count):
@@ -98,11 +103,13 @@ def calc_distortion(X,d):
 def stoch_solver(X,d,w,indices,schedule,num_iter=15,epsilon=1e-3,debug=True):
     step = schedule[0]
     shuffle = random.shuffle
+    r = 1
 
     for count in range(num_iter):
 
         for i,j in indices: # Random pair
-            X[i],X[j] = satisfy(X[i],X[j],d[i][j],w[i][j],step) #Gradient w.r.t. pair i and j
+            X[i],X[j],r = satisfy(X[i],X[j],d[i][j],w[i][j],step,r) #Gradient w.r.t. pair i and j
+        #print(r)
 
         step = schedule[count] if count < len(schedule) else schedule[-1] #Get next step size
         #step = 1/(count+1)

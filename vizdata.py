@@ -14,21 +14,28 @@ def polytopes():
 
 
 def geo_distortions():
-    data = np.loadtxt('data/euclid_distortions.txt',delimiter=',')[10:25]
-    s_data = np.loadtxt('data/spherical_distortions.txt',delimiter=',')[10:25]
+    data = np.loadtxt('data/euclid_distortions.txt',delimiter=',')[:10]
+    s_data = np.loadtxt('data/spherical_distortions.txt',delimiter=',')[:10]
+    h_data = np.loadtxt('data/hyperbolic_distortions1.txt',delimiter=',')[:10]
     print(data)
     _,graphs = exp_graphs()
     graphs = [g[:8] for g in graphs]
-    x = np.arange(data.shape[0])*3
+    x = np.arange(data.shape[0])*4
 
     fig, ax = pylab.subplots()
 
-    ax.set_xticks( x, labels=graphs[10:25] )
-    pylab.bar(x-0.5,data[:,1],label="Euclidean")
-    pylab.bar(x+0.5,s_data[:,1],label="Spherical")
+    e = data.mean(axis=1)
+    s = s_data.mean(axis=1)
+
+    ax.set_yticks( x, labels=graphs[:10] )
+    pylab.barh(x-0.8,data[:,1],label="Euclidean")
+    pylab.barh(x,s_data[:,1],label="Spherical")
+    pylab.barh(x+0.8,h_data[:,1],label="hyperbolic")
+
+    ax.invert_yaxis()
 
     pylab.suptitle("Distortion comparison across graphs")
-    pylab.ylabel('Distortion')
+    pylab.xlabel('Distortion')
     pylab.legend()
     pylab.show()
 
