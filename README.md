@@ -4,10 +4,12 @@ Graph Layouts on the sphere
 
 ```
 usage: layout.py [-h] [--max_iter MAX_ITER]
+                [--opt_scale  OPT_SCALE]
+                [--epsilon  EPSILON]
                 [--learning_rate LEARNING_RATE] [--output OUTPUT]
                 input_graph
 
-Read a graph, and produce a layout with tsNET(*).
+Read a graph, and produce a layout with SMDS.
 
 positional arguments:
   input_graph
@@ -31,10 +33,11 @@ optional arguments:
                         Save layout to the specified file.
 ```
 
-Example:
-```bash
-# Read the input graph dwt_72, and save the output in ./out.json
-python3 layout.py graphs/cube.txt --output out.json
+# Example:
+```
+# Read the input graph a cube, and saves the output to be viewed in the webapp at webapp/index.html
+python3 layout.py graphs/cube.txt
+
 ```
 
 # Dependencies
@@ -45,5 +48,3 @@ python3 layout.py graphs/cube.txt --output out.json
 * [`graph-tool`](https://graph-tool.skewed.de/)
 * [`numba`](http://deeplearning.net/software/theano/)
 * [`scikit-learn`](http://scikit-learn.org/stable/)
-
-# Example
