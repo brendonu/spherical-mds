@@ -1,13 +1,13 @@
 import numpy as np
 import math
 import graph_tool.all as gt
-from graph_functions import apsp, sphere_stress,distortion
-from graph_io import write_to_json
-from SGD_MDS_sphere import SMDS
-from SGD_hyperbolic import HMDS
-from SGD_MDS2 import SGD
+from modules.graph_functions import apsp, sphere_stress,distortion
+from modules.graph_io import write_to_json
+from modules.SGD_MDS_sphere import SMDS
+from modules.SGD_hyperbolic import HMDS
+from modules.SGD_MDS2 import SGD
 from sklearn.metrics.pairwise import haversine_distances
-from graph_functions import subdivide_graph_recursive
+from modules.graph_functions import subdivide_graph_recursive
 
 
 from numba import jit
@@ -49,7 +49,7 @@ def euclid_drive():
 
 def sphere_drive():
     #G = gt.load_graph("graphs/grid1.dot")
-    G = gt.load_graph_from_csv("exp_graphs/block_2000.txt",hashed=False)
+    G = gt.load_graph_from_csv("graphs/block_400.txt",hashed=False)
     print(G.num_vertices())
 
     import time
