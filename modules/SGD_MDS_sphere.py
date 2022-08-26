@@ -99,7 +99,8 @@ def solve_stochastic(d,indices,
     error = lambda x1,x2, dij: (geodesic(x1,x2) - dij) **2
     #haver_grad = grad(error)
     prev_error, now_error = 0,0
-    for step in steps:
+    for count,step in enumerate(steps):
+        now_error = 0
 
         for i,j in indices:
             wc =  step #/ (d[i][j]**2)
@@ -113,20 +114,21 @@ def solve_stochastic(d,indices,
 
             X[i] = X[i] - m[0]
             X[j] = X[j] - m[1]
+            now_error = max(m[0].max(),m[1].max(),now_error)
             #r = r - wc*  2*delta*(r*delta - d[i][j])
             #if r <= 0: r = epsilon
 
         shuffle(indices)
-        # now_error = stress(X)
-        # if abs(now_error-prev_error) < epsilon:
-        #     break
-        # prev_error = now_error
+        now_error = stress(X)
+        if abs(now_error-prev_error) < epsilon and count >= 15:
+            break
+        prev_error = now_error
         # print(stress(X))
         if debug:
             print(stress(X))
 
 
-    return X
+    return X,count
 
 
 @jit(nopython=True,cache=True)
@@ -212,8 +214,10 @@ def solve_stochastic_debug(d,indices,
     error = lambda x1,x2, dij: (geodesic(x1,x2) - dij) **2
     #haver_grad = grad(error)
     prev_error, now_error = stress(X,r),0
+    current_change,old_change = 0,0
 
     for step in steps:
+        current_change = 0
 
         for i,j in indices:
             wc =  step #/ (d[i][j]**2)
@@ -227,6 +231,7 @@ def solve_stochastic_debug(d,indices,
 
             X[i] = X[i] - m[0]
             X[j] = X[j] - m[1]
+            current_change = max(m[0],m[1],current_change)
             #r = r - wc*  2*delta*(r*delta - d[i][j])
             #if r <= 0: r = epsilon
 
@@ -234,14 +239,14 @@ def solve_stochastic_debug(d,indices,
         now_error = stress(X,r)
         hist.append(X.copy())
         r_hist.append(r)
-        # if abs(now_error-prev_error)/prev_error < epsilon:
-        #     break
+        if abs(now_error-prev_error)/prev_error < epsilon:
+            break
         prev_error = now_error
         # if debug:
         #     print(now_error)
 
 
-    return hist, r_hist
+    return hist, step
 
 class SMDS:
     def __init__(self,dissimilarities,init_pos=np.array([]),scale_heuristic=True):

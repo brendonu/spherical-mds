@@ -4,7 +4,7 @@ from sklearn.metrics.pairwise import haversine_distances
 from numba import jit
 import math
 
-def sphere_stress(X,d,r):
+def sphere_stress(X,d,r=1):
     w = d.copy()
     w[w!=0] = w[w!=0]**-2
     diff = haversine_distances(X)
