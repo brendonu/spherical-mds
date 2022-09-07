@@ -3,7 +3,7 @@
 if __name__ == '__main__':
     #Driver script adapted from https://github.com/HanKruiger/tsNET
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='Read a graph, and produce a layout with tsNET(*).')
+    parser = ArgumentParser(description='Read a graph, and produce a layout with SMDS (output into a json file to be loaded with the webapp).')
 
     # Input
     parser.add_argument('input_graph')
