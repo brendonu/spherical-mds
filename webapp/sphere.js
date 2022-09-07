@@ -7,7 +7,10 @@ let state = {
   't': null,
   'pitch': 0,
   'transformx': 0,
-  'transformy': 0
+  'transformy': 0, 
+  'G': G,
+  'points': null,
+  'edges': null
 }
 
 
@@ -82,42 +85,48 @@ var width = 1000,
     y: 0
   };
 
-console.log(G)
+//console.log(G)
 
 //var Graph = DotParser.parse(readTextFile('new_outputs/cube_animation0.dot'));
 
-let points = {
-  type: "FeatureCollection",
-  features: G['nodes'].map((val, i) => {
-    return {type:"Feature",
-            geometry: {
-              type: "Point",
-              coordinates: rad2deg_arr(val['pos']),
-              label: val['id'],
-              'class': val.class
-            }
-      }
-  })
+let assign_pos = function(){
+  points = {
+    type: "FeatureCollection",
+    features: G['nodes'].map((val, i) => {
+      return {type:"Feature",
+              geometry: {
+                type: "Point",
+                coordinates: rad2deg_arr(val['pos']),
+                label: val['id'],
+                'class': val.class
+              }
+        }
+    })
+  }
+  
+  
+  index_map = {}
+  for (const ind in G.nodes) {
+    index_map[G.nodes[ind].id] = Number(ind)
+  }
+  
+  console.log(index_map)
+  
+  edges = G['edges'].map( (val,i) => {
+      return {type: "LineString", coordinates: [ rad2deg_arr( G.nodes[index_map[val.source]].pos ), rad2deg_arr( G.nodes[index_map[val.target]].pos ) ] }
+    } )
+  
+  console.log(edges)
+  
 }
 
-
-index_map = {}
-for (const ind in G.nodes) {
-  index_map[G.nodes[ind].id] = Number(ind)
-}
-
-console.log(index_map)
-
-let edges = G['edges'].map( (val,i) => {
-    return {type: "LineString", coordinates: [ rad2deg_arr( G.nodes[index_map[val.source]].pos ), rad2deg_arr( G.nodes[index_map[val.target]].pos ) ] }
-  } )
-
-console.log(edges)
 
 //Map = makeMap(myGraph);
 
 window.addEventListener('load',function(){
   var svg = d3.select("svg");
+
+  setup_graph_select();
 
   var projection = d3.geoOrthographic(),
       path = d3.geoPath().projection(projection)
@@ -158,6 +167,49 @@ window.addEventListener('load',function(){
 
   updateData()
 })
+
+let setup_graph_select = function(){
+  var values = G_names;
+  values.sort()
+  
+  var select = document.createElement("select");
+  select.name = "pets";
+  select.id = "pets"
+
+  var option = document.createElement("option");
+  option.value = null;
+  option.text = "Choose a graph";
+  select.appendChild(option);
+
+  for (const val of values)
+  {
+      var option = document.createElement("option");
+      option.value = val;
+      option.text = val;
+      select.appendChild(option);
+  }
+
+  var label = document.createElement("label");
+  // label.innerHTML = "Choose your pets: "
+  // label.htmlFor = "pets";
+
+  select.addEventListener('change', d =>{
+    var script = document.createElement('script');
+      script.onload = function () {
+          state.G = G
+          assign_pos();
+          state.svg.selectAll(".links").remove()
+          state.svg.selectAll(".sites").remove()
+          state.svg.selectAll(".graticule").remove()
+
+          updateData();
+        };
+    script.src = "store_data/" + select.value + ".json";
+    document.head.appendChild(script);
+  })
+
+  document.getElementById("selection").appendChild(label).appendChild(select);
+}
 
 let sliderchange = function(){
   state.pitch = document.getElementById("pitch").value;
@@ -210,20 +262,20 @@ function updateData(){
 
   let labels = svg.append('g').attr('class', 'labels');
 
-  svg.append('g')
-      .attr('class', 'labels')
-      .selectAll('path')
-      .data(points.features)
-      .enter()
-      .append('text')
-      .text(d => d.label)
-      //.attr('d',d => d.label)
-      .attr('font-size', 7)
-      .style('text-anchor', 'middle')
-      .attr('transform', function(d) {
-           return 'translate(' +  path.centroid(d) + ')';
-         })
-         .text(function(d) {return d.geometry.label; });
+  // svg.append('g')
+  //     .attr('class', 'labels')
+  //     .selectAll('path')
+  //     .data(points.features)
+  //     .enter()
+  //     .append('text')
+  //     .text(d => d.label)
+  //     //.attr('d',d => d.label)
+  //     .attr('font-size', 7)
+  //     .style('text-anchor', 'middle')
+  //     .attr('transform', function(d) {
+  //          return 'translate(' +  path.centroid(d) + ')';
+  //        })
+  //        .text(function(d) {return d.geometry.label; });
   }
 
 
