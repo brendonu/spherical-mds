@@ -204,7 +204,7 @@ let setup_graph_select = function(){
 
           updateData();
         };
-    script.src = "store_data/" + select.value + ".json";
+    script.src = "exp_drawings/" + select.value + ".js";
     document.head.appendChild(script);
   })
 
