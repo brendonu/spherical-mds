@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print("Done.")
 
     #Perform optimization from SGD_MDS_sphere module
-    X = SMDS(d,scale_heuristic = not args.opt_scale).solve(
+    X,_ = SMDS(d,scale_heuristic = not args.opt_scale).solve(
         num_iter = args.max_iter,
         schedule = args.learning_rate,
         epsilon = args.epsilon
