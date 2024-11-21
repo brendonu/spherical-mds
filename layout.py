@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from modules.graph_functions import count_intersection
+
+
 if __name__ == '__main__':
     #Driver script adapted from https://github.com/HanKruiger/tsNET
     from argparse import ArgumentParser
@@ -59,6 +62,8 @@ if __name__ == '__main__':
     end = time.perf_counter()
     comp_time = end - start
     print('SMDS took {0:.2f} s.'.format(comp_time))
+    #Edges = G.get_edges()
+    #print(count_intersection(Edges, X)) 
 
     print("-----------------------")
 

@@ -1,26 +1,23 @@
-def parseBibtexEntry(file):
+import numpy as np
+
+def parseNpyEntry(file):
     adjacency_list = []
-    # Open the file and read the lines
-    with open(file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or ':' not in line:
-                continue
-            # Splitting line by ":" to separate node from its neighbors
-            node, neighbors = line.split(":")
-            # Removing any whitespace
-            node = int(node.strip())-1
-            neighbor_nodes = neighbors.strip().split()
-            # Adding the connections to the adjacency list
-            for conn in neighbor_nodes:
-                conn = int(conn)-1
-                if conn > node:  # Ensuring only higher connections are stored
-                    adjacency_list.append([node, conn])
+    
+    data = np.load(file)
+
+    for i in range(data.shape[0]):  
+        for j in range(i + 1, data.shape[1]):  
+            if data[i][j] == 1:  
+                adjacency_list.append([i, j])
 
     # Write adjacency list to a text file
     with open('adjacency_list.txt', 'w') as f_out:
+        f_out.truncate(0)
         for node, neighbor in adjacency_list:
             f_out.write(f"{node},{neighbor}\n")
 
     return adjacency_list
-parseBibtexEntry("datasets/hamiltonian/list_1_graphs (2).lst")
+
+# Example usage
+parseNpyEntry("new_data/hamiltonian_medium_mat/hamiltonian_5909.npy")
+
