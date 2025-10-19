@@ -1,4 +1,7 @@
 # spherical-MDS
+<img width="2339" height="1654" alt="undergraduate_project_poster" src="https://github.com/user-attachments/assets/1348b1cd-7252-4bb5-8928-4b3edcc10c23" />
+
+
 
 Graph Layouts on the sphere
 
